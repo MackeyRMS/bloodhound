@@ -1,19 +1,19 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
-{-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE OverloadedStrings          #-}
+{-# LANGUAGE RecordWildCards            #-}
 
 module Database.Bloodhound.Internal.Aggregation where
 
-import Bloodhound.Import
-import qualified Data.Aeson as Aeson
-import qualified Data.Aeson.KeyMap as X
-import qualified Data.Map.Strict as M
-import qualified Data.Text as T
-import Database.Bloodhound.Internal.Client
-import Database.Bloodhound.Internal.Highlight (HitHighlight)
-import Database.Bloodhound.Internal.Newtypes
-import Database.Bloodhound.Internal.Query
-import Database.Bloodhound.Internal.Sort
+import           Bloodhound.Import
+import qualified Data.Aeson                             as Aeson
+import qualified Data.Aeson.KeyMap                      as X
+import qualified Data.Map.Strict                        as M
+import qualified Data.Text                              as T
+import           Database.Bloodhound.Internal.Client
+import           Database.Bloodhound.Internal.Highlight (HitHighlight)
+import           Database.Bloodhound.Internal.Newtypes
+import           Database.Bloodhound.Internal.Query
+import           Database.Bloodhound.Internal.Sort
 
 type Aggregations = M.Map Key Aggregation
 
@@ -25,6 +25,7 @@ mkAggregations name aggregation = M.insert name aggregation emptyAggregations
 
 data Aggregation
   = TermsAgg TermsAggregation
+  | MultiTermsAgg MultiTermsAggregation
   | CardinalityAgg CardinalityAggregation
   | DateHistogramAgg DateHistogramAggregation
   | ValueCountAgg ValueCountAggregation
@@ -55,6 +56,17 @@ instance ToJSON Aggregation where
       ]
     where
       toJSON' x = case x of Left y -> "field" .= y; Right y -> "script" .= y
+  toJSON (MultiTermsAgg (MultiTermsAggregation multiTerms order minDocCount size termAggs)) =
+    omitNulls
+      [ "multi_terms"
+          .= omitNulls
+            [ "terms" .= fmap (\t -> object ["field" .= t]) multiTerms,
+              "order" .= order,
+              "min_doc_count" .= minDocCount,
+              "size" .= size
+            ],
+        "aggs" .= termAggs
+      ]
   toJSON (CardinalityAgg (CardinalityAggregation field precisionThreshold)) =
     object
       [ "cardinality"
@@ -138,40 +150,49 @@ data MissingAggregation = MissingAggregation
   deriving (Eq, Show)
 
 data TermsAggregation = TermsAggregation
-  { term :: Either Text Text,
-    termInclude :: Maybe TermInclusion,
-    termExclude :: Maybe TermInclusion,
-    termOrder :: Maybe TermOrder,
-    termMinDocCount :: Maybe Int,
-    termSize :: Maybe Int,
-    termShardSize :: Maybe Int,
-    termCollectMode :: Maybe CollectionMode,
+  { term              :: Either Text Text,
+    termInclude       :: Maybe TermInclusion,
+    termExclude       :: Maybe TermInclusion,
+    termOrder         :: Maybe TermOrder,
+    termMinDocCount   :: Maybe Int,
+    termSize          :: Maybe Int,
+    termShardSize     :: Maybe Int,
+    termCollectMode   :: Maybe CollectionMode,
     termExecutionHint :: Maybe ExecutionHint,
-    termAggs :: Maybe Aggregations
+    termAggs          :: Maybe Aggregations
+  }
+  deriving (Eq, Show)
+
+data MultiTermsAggregation = MultiTermsAggregation
+  { multiTerms            :: [Text]
+  , multiTermsOrder       :: Maybe TermOrder
+  , multiTermsMinDocCount :: Maybe Int
+  , multiTermsSize        :: Maybe Int
+  , multiTermAggs         :: Maybe Aggregations
   }
   deriving (Eq, Show)
 
 data CardinalityAggregation = CardinalityAggregation
-  { cardinalityField :: FieldName,
+  { cardinalityField   :: FieldName,
     precisionThreshold :: Maybe Int
   }
   deriving (Eq, Show)
 
 data DateHistogramAggregation = DateHistogramAggregation
-  { dateField :: FieldName,
-    dateInterval :: Interval,
-    dateFormat :: Maybe Text,
+  { dateField      :: FieldName,
+    dateInterval   :: Interval,
+    dateFormat     :: Maybe Text,
     -- pre and post deprecated in 1.5
-    datePreZone :: Maybe Text,
-    datePostZone :: Maybe Text,
-    datePreOffset :: Maybe Text,
+    datePreZone    :: Maybe Text,
+    datePostZone   :: Maybe Text,
+    datePreOffset  :: Maybe Text,
     datePostOffset :: Maybe Text,
-    dateAggs :: Maybe Aggregations
+    dateAggs       :: Maybe Aggregations
   }
   deriving (Eq, Show)
 
 data DateRangeAggregation = DateRangeAggregation
-  { draField :: FieldName,
+  { draField  :: FieldName,
     draFormat :: Maybe Text,
     draRanges :: NonEmpty DateRangeAggRange
   }
@@ -192,8 +213,8 @@ data DateRangeAggRange
   deriving (Eq, Show)
 
 instance ToJSON DateRangeAggRange where
-  toJSON (DateRangeFrom e) = object ["from" .= e]
-  toJSON (DateRangeTo e) = object ["to" .= e]
+  toJSON (DateRangeFrom e)        = object ["from" .= e]
+  toJSON (DateRangeTo e)          = object ["to" .= e]
   toJSON (DateRangeFromAndTo f t) = object ["from" .= f, "to" .= t]
 
 -- | See <https://www.elastic.co/guide/en/elasticsearch/reference/current/search-aggregations-metrics-valuecount-aggregation.html> for more information.
@@ -205,12 +226,12 @@ data ValueCountAggregation
 -- | Single-bucket filter aggregations. See <https://www.elastic.co/guide/en/elasticsearch/reference/current/search-aggregations-bucket-filter-aggregation.html#search-aggregations-bucket-filter-aggregation> for more information.
 data FilterAggregation = FilterAggregation
   { faFilter :: Filter,
-    faAggs :: Maybe Aggregations
+    faAggs   :: Maybe Aggregations
   }
   deriving (Eq, Show)
 
 data StatisticsAggregation = StatisticsAggregation
-  { statsType :: StatsType,
+  { statsType  :: StatsType,
     statsField :: FieldName
   }
   deriving (Eq, Show)
@@ -279,8 +300,8 @@ data BucketValue
 instance FromJSON BucketValue where
   parseJSON (String t) = return $ TextValue t
   parseJSON (Number s) = return $ ScientificValue s
-  parseJSON (Bool b) = return $ BoolValue b
-  parseJSON _ = mempty
+  parseJSON (Bool b)   = return $ BoolValue b
+  parseJSON _          = mempty
 
 data TermInclusion
   = TermInclusion Text
@@ -312,7 +333,7 @@ data CollectionMode
 
 instance ToJSON CollectionMode where
   toJSON BreadthFirst = "breadth_first"
-  toJSON DepthFirst = "depth_first"
+  toJSON DepthFirst   = "depth_first"
 
 data ExecutionHint
   = GlobalOrdinals
@@ -321,7 +342,7 @@ data ExecutionHint
 
 instance ToJSON ExecutionHint where
   toJSON GlobalOrdinals = "global_ordinals"
-  toJSON Map = "map"
+  toJSON Map            = "map"
 
 -- | See <https://www.elastic.co/guide/en/elasticsearch/reference/current/common-options.html#date-math> for more information.
 data DateMathExpr
@@ -331,16 +352,16 @@ data DateMathExpr
 instance ToJSON DateMathExpr where
   toJSON (DateMathExpr a mods) = String (fmtA a <> mconcat (fmtMod <$> mods))
     where
-      fmtA DMNow = "now"
+      fmtA DMNow         = "now"
       fmtA (DMDate date) = (T.pack $ showGregorian date) <> "||"
-      fmtMod (AddTime n u) = "+" <> showText n <> fmtU u
+      fmtMod (AddTime n u)      = "+" <> showText n <> fmtU u
       fmtMod (SubtractTime n u) = "-" <> showText n <> fmtU u
-      fmtMod (RoundDownTo u) = "/" <> fmtU u
-      fmtU DMYear = "y"
-      fmtU DMMonth = "M"
-      fmtU DMWeek = "w"
-      fmtU DMDay = "d"
-      fmtU DMHour = "h"
+      fmtMod (RoundDownTo u)    = "/" <> fmtU u
+      fmtU DMYear   = "y"
+      fmtU DMMonth  = "M"
+      fmtU DMWeek   = "w"
+      fmtU DMDay    = "d"
+      fmtU DMHour   = "h"
       fmtU DMMinute = "m"
       fmtU DMSecond = "s"
 
@@ -367,9 +388,9 @@ data DateMathUnit
   deriving (Eq, Show)
 
 data TermsResult = TermsResult
-  { termKey :: BucketValue,
+  { termKey       :: BucketValue,
     termsDocCount :: Int,
-    termsAggs :: Maybe AggregationResults
+    termsAggs     :: Maybe AggregationResults
   }
   deriving (Read, Show)
 
@@ -387,9 +408,9 @@ instance BucketAggregation TermsResult where
   aggs = termsAggs
 
 data DateHistogramResult = DateHistogramResult
-  { dateKey :: Int,
-    dateKeyStr :: Maybe Text,
-    dateDocCount :: Int,
+  { dateKey           :: Int,
+    dateKeyStr        :: Maybe Text,
+    dateDocCount      :: Int,
     dateHistogramAggs :: Maybe AggregationResults
   }
   deriving (Show)
@@ -416,13 +437,13 @@ instance BucketAggregation DateHistogramResult where
   aggs = dateHistogramAggs
 
 data DateRangeResult = DateRangeResult
-  { dateRangeKey :: Text,
-    dateRangeFrom :: Maybe UTCTime,
+  { dateRangeKey          :: Text,
+    dateRangeFrom         :: Maybe UTCTime,
     dateRangeFromAsString :: Maybe Text,
-    dateRangeTo :: Maybe UTCTime,
-    dateRangeToAsString :: Maybe Text,
-    dateRangeDocCount :: Int,
-    dateRangeAggs :: Maybe AggregationResults
+    dateRangeTo           :: Maybe UTCTime,
+    dateRangeToAsString   :: Maybe Text,
+    dateRangeDocCount     :: Int,
+    dateRangeAggs         :: Maybe AggregationResults
   }
   deriving (Eq, Show)
 
@@ -505,12 +526,12 @@ instance (FromJSON a) => FromJSON (TopHitResult a) where
 data HitsTotalRelation = HTR_EQ | HTR_GTE deriving (Eq, Show)
 
 instance FromJSON HitsTotalRelation where
-  parseJSON (String "eq") = pure HTR_EQ
+  parseJSON (String "eq")  = pure HTR_EQ
   parseJSON (String "gte") = pure HTR_GTE
-  parseJSON _ = empty
+  parseJSON _              = empty
 
 data HitsTotal = HitsTotal
-  { value :: Int,
+  { value    :: Int,
     relation :: HitsTotalRelation
   }
   deriving (Eq, Show)
@@ -524,13 +545,13 @@ instance FromJSON HitsTotal where
 
 instance Semigroup HitsTotal where
   (HitsTotal ta HTR_EQ) <> (HitsTotal tb HTR_EQ) = HitsTotal (ta + tb) HTR_EQ
-  (HitsTotal ta HTR_GTE) <> (HitsTotal tb _) = HitsTotal (ta + tb) HTR_GTE
-  (HitsTotal ta _) <> (HitsTotal tb HTR_GTE) = HitsTotal (ta + tb) HTR_GTE
+  (HitsTotal ta HTR_GTE) <> (HitsTotal tb _)     = HitsTotal (ta + tb) HTR_GTE
+  (HitsTotal ta _) <> (HitsTotal tb HTR_GTE)     = HitsTotal (ta + tb) HTR_GTE
 
 data SearchHits a = SearchHits
   { hitsTotal :: HitsTotal,
-    maxScore :: Score,
-    hits :: [Hit a]
+    maxScore  :: Score,
+    hits      :: [Hit a]
   }
   deriving (Eq, Show)
 
@@ -553,12 +574,12 @@ instance Monoid (SearchHits a) where
 type SearchAfterKey = [Aeson.Value]
 
 data Hit a = Hit
-  { hitIndex :: IndexName,
-    hitDocId :: DocId,
-    hitScore :: Score,
-    hitSource :: Maybe a,
-    hitSort :: Maybe SearchAfterKey,
-    hitFields :: Maybe HitFields,
+  { hitIndex     :: IndexName,
+    hitDocId     :: DocId,
+    hitScore     :: Score,
+    hitSource    :: Maybe a,
+    hitSort      :: Maybe SearchAfterKey,
+    hitFields    :: Maybe HitFields,
     hitHighlight :: Maybe HitHighlight,
     hitInnerHits :: Maybe (X.KeyMap (TopHitResult Value))
   }

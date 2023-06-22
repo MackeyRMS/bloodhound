@@ -20,6 +20,6 @@ extra-deps:
 
 resolver: lts-18.28
 
-nix:
-  enable: true
-  packages: [zlib]
+# nix:
+#   enable: true
+#   packages: [zlib]
