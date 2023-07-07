@@ -1,4 +1,5 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE NamedFieldPuns             #-}
 {-# LANGUAGE OverloadedStrings          #-}
 {-# LANGUAGE RecordWildCards            #-}
 
@@ -35,6 +36,7 @@ data Aggregation
   | TopHitsAgg TopHitsAggregation
   | StatsAgg StatisticsAggregation
   | SumAgg SumAggregation
+  | NestedAgg NestedAggregation
   deriving (Eq, Show)
 
 instance ToJSON Aggregation where
@@ -117,7 +119,7 @@ instance ToJSON Aggregation where
     object
       [ "date_range" .= a
       ]
-  toJSON (MissingAgg (MissingAggregation {..})) =
+  toJSON (MissingAgg MissingAggregation {..}) =
     object ["missing" .= object ["field" .= maField]]
   toJSON (TopHitsAgg (TopHitsAggregation mfrom msize msort)) =
     omitNulls
@@ -136,6 +138,10 @@ instance ToJSON Aggregation where
         | otherwise = "extended_stats"
   toJSON (SumAgg (SumAggregation (FieldName n))) =
     omitNulls ["sum" .= omitNulls ["field" .= n]]
+  toJSON (NestedAgg NestedAggregation {nestedAggPath, nestedAggs}) =
+    object [ "nested" .= object ["path" .= nestedAggPath]
+           , "aggs" .= toJSON nestedAggs
+           ]
 
 data TopHitsAggregation = TopHitsAggregation
   { taFrom :: Maybe From,
@@ -144,7 +150,7 @@ data TopHitsAggregation = TopHitsAggregation
   }
   deriving (Eq, Show)
 
-data MissingAggregation = MissingAggregation
+newtype MissingAggregation = MissingAggregation
   { maField :: Text
   }
   deriving (Eq, Show)
@@ -171,6 +177,11 @@ data MultiTermsAggregation = MultiTermsAggregation
   , multiTermAggs         :: Maybe Aggregations
   }
   deriving (Eq, Show)
+
+data NestedAggregation = NestedAggregation
+  { nestedAggPath :: Text
+  , nestedAggs    :: Aggregations
+  } deriving (Eq, Show)
 
 data CardinalityAggregation = CardinalityAggregation
   { cardinalityField   :: FieldName,

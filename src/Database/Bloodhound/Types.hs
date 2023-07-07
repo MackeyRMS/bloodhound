@@ -372,6 +372,7 @@ module Database.Bloodhound.Types
     BucketAggregation (..),
     TermsAggregation (..),
     MultiTermsAggregation (..),
+    NestedAggregation (..),
     MissingAggregation (..),
     ValueCountAggregation (..),
     FilterAggregation (..),
