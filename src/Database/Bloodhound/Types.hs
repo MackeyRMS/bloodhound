@@ -414,6 +414,7 @@ module Database.Bloodhound.Types
     EsPassword (..),
     Analysis (..),
     AnalyzerDefinition (..),
+    NormalizerDefinition (..),
     TokenizerDefinition (..),
     TokenFilterDefinition (..),
     CharFilterDefinition (..),
