@@ -1,31 +1,33 @@
-{-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE DeriveGeneric              #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
-{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE OverloadedStrings          #-}
 
 module Database.Bloodhound.Internal.Analysis where
 
-import Bloodhound.Import
-import qualified Data.Map.Strict as M
-import qualified Data.Text as T
-import Database.Bloodhound.Internal.Newtypes
-import Database.Bloodhound.Internal.StringlyTyped
-import GHC.Generics
+import           Bloodhound.Import
+import qualified Data.Map.Strict                            as M
+import qualified Data.Text                                  as T
+import           Database.Bloodhound.Internal.Newtypes
+import           Database.Bloodhound.Internal.StringlyTyped
+import           GHC.Generics
 
 data Analysis = Analysis
-  { analysisAnalyzer :: M.Map Text AnalyzerDefinition,
-    analysisTokenizer :: M.Map Text TokenizerDefinition,
+  { analysisAnalyzer    :: M.Map Text AnalyzerDefinition,
+    analysisTokenizer   :: M.Map Text TokenizerDefinition,
     analysisTokenFilter :: M.Map Text TokenFilterDefinition,
-    analysisCharFilter :: M.Map Text CharFilterDefinition
+    analysisCharFilter  :: M.Map Text CharFilterDefinition,
+    analysisNormalizer  :: M.Map Text NormalizerDefinition
   }
   deriving (Eq, Show, Generic)
 
 instance ToJSON Analysis where
-  toJSON (Analysis analyzer tokenizer tokenFilter charFilter) =
+  toJSON (Analysis analyzer tokenizer tokenFilter charFilter normalizer) =
     object
       [ "analyzer" .= analyzer,
         "tokenizer" .= tokenizer,
         "filter" .= tokenFilter,
-        "char_filter" .= charFilter
+        "char_filter" .= charFilter,
+        "normalizer" .= normalizer
       ]
 
 instance FromJSON Analysis where
@@ -35,14 +37,15 @@ instance FromJSON Analysis where
       <*> m .:? "tokenizer" .!= M.empty
       <*> m .:? "filter" .!= M.empty
       <*> m .:? "char_filter" .!= M.empty
+      <*> m .:? "normalizer" .!= M.empty
 
 newtype Tokenizer
   = Tokenizer Text
   deriving (Eq, Show, Generic, ToJSON, FromJSON)
 
 data AnalyzerDefinition = AnalyzerDefinition
-  { analyzerDefinitionTokenizer :: Maybe Tokenizer,
-    analyzerDefinitionFilter :: [TokenFilter],
+  { analyzerDefinitionTokenizer  :: Maybe Tokenizer,
+    analyzerDefinitionFilter     :: [TokenFilter],
     analyzerDefinitionCharFilter :: [CharFilter]
   }
   deriving (Eq, Show, Generic)
@@ -63,14 +66,33 @@ instance FromJSON AnalyzerDefinition where
       <*> m .:? "filter" .!= []
       <*> m .:? "char_filter" .!= []
 
+data NormalizerDefinition = NormalizerDefinition
+  { normalizerDefinitionFilter     :: [TokenFilter],
+    normalizerDefinitionCharFilter :: [CharFilter]
+  } deriving (Eq, Show, Generic)
+
+instance ToJSON NormalizerDefinition where
+  toJSON (NormalizerDefinition tokenFilter charFilter) =
+    object
+      [ "filter" .= tokenFilter,
+        "char_filter" .= charFilter,
+        "type" .= ("custom" :: Text)
+      ]
+
+instance FromJSON NormalizerDefinition where
+  parseJSON = withObject "NormalizerDefinition" $ \m ->
+    NormalizerDefinition
+      <$> m .:? "filter" .!= []
+      <*> m .:? "char_filter" .!= []
+
 -- | Character filters are used to preprocess the stream of characters
 --   before it is passed to the tokenizer.
 data CharFilterDefinition
   = CharFilterDefinitionMapping (M.Map Text Text)
   | CharFilterDefinitionPatternReplace
-      { charFilterDefinitionPatternReplacePattern :: Text,
+      { charFilterDefinitionPatternReplacePattern     :: Text,
         charFilterDefinitionPatternReplaceReplacement :: Text,
-        charFilterDefinitionPatternReplaceFlags :: Maybe Text
+        charFilterDefinitionPatternReplaceFlags       :: Maybe Text
       }
   deriving (Eq, Show)
 
@@ -97,7 +119,7 @@ instance FromJSON CharFilterDefinition where
           ms = m .: "mappings" >>= mapM parseMapping
           parseMapping kv = case T.splitOn "=>" kv of
             (k : vs) -> pure (T.strip k, T.strip $ T.concat vs)
-            _ -> fail "mapping is not of the format key => value"
+            _        -> fail "mapping is not of the format key => value"
       "pattern_replace" ->
         CharFilterDefinitionPatternReplace
           <$> m .: "pattern"
@@ -141,8 +163,8 @@ instance FromJSON TokenizerDefinition where
           <*> m .: "token_chars"
 
 data Ngram = Ngram
-  { ngramMinGram :: Int,
-    ngramMaxGram :: Int,
+  { ngramMinGram    :: Int,
+    ngramMaxGram    :: Int,
     ngramTokenChars :: [TokenChar]
   }
   deriving (Eq, Show, Generic)
@@ -157,20 +179,20 @@ data TokenChar
 
 instance ToJSON TokenChar where
   toJSON t = String $ case t of
-    TokenLetter -> "letter"
-    TokenDigit -> "digit"
-    TokenWhitespace -> "whitespace"
+    TokenLetter      -> "letter"
+    TokenDigit       -> "digit"
+    TokenWhitespace  -> "whitespace"
     TokenPunctuation -> "punctuation"
-    TokenSymbol -> "symbol"
+    TokenSymbol      -> "symbol"
 
 instance FromJSON TokenChar where
   parseJSON = withText "TokenChar" $ \t -> case t of
-    "letter" -> return TokenLetter
-    "digit" -> return TokenDigit
-    "whitespace" -> return TokenWhitespace
+    "letter"      -> return TokenLetter
+    "digit"       -> return TokenDigit
+    "whitespace"  -> return TokenWhitespace
     "punctuation" -> return TokenPunctuation
-    "symbol" -> return TokenSymbol
-    _ -> fail "invalid TokenChar"
+    "symbol"      -> return TokenSymbol
+    _             -> fail "invalid TokenChar"
 
 -- | Token filters are used to create custom analyzers.
 data TokenFilterDefinition
@@ -233,7 +255,7 @@ instance ToJSON TokenFilterDefinition where
       object
         [ "type" .= ("stop" :: Text),
           "stopwords" .= case stop of
-            Left lang -> String $ "_" <> languageToText lang <> "_"
+            Left lang   -> String $ "_" <> languageToText lang <> "_"
             Right stops -> toJSON stops
         ]
     TokenFilterDefinitionEdgeNgram ngram side ->
@@ -324,7 +346,7 @@ data EdgeNgramFilterSide
 
 instance ToJSON EdgeNgramFilterSide where
   toJSON EdgeNgramFilterSideFront = String "front"
-  toJSON EdgeNgramFilterSideBack = String "back"
+  toJSON EdgeNgramFilterSideBack  = String "back"
 
 instance FromJSON EdgeNgramFilterSide where
   parseJSON = withText "EdgeNgramFilterSide" $ \t ->
@@ -384,98 +406,98 @@ instance ToJSON Language where
 
 instance FromJSON Language where
   parseJSON = withText "Language" $ \t -> case languageFromText t of
-    Nothing -> fail "not a supported Elasticsearch language"
+    Nothing   -> fail "not a supported Elasticsearch language"
     Just lang -> return lang
 
 languageToText :: Language -> Text
 languageToText x = case x of
-  Arabic -> "arabic"
-  Armenian -> "armenian"
-  Basque -> "basque"
-  Bengali -> "bengali"
-  Brazilian -> "brazilian"
-  Bulgarian -> "bulgarian"
-  Catalan -> "catalan"
-  Cjk -> "cjk"
-  Czech -> "czech"
-  Danish -> "danish"
-  Dutch -> "dutch"
-  English -> "english"
-  Finnish -> "finnish"
-  French -> "french"
-  Galician -> "galician"
-  German -> "german"
-  German2 -> "german2"
-  Greek -> "greek"
-  Hindi -> "hindi"
-  Hungarian -> "hungarian"
+  Arabic     -> "arabic"
+  Armenian   -> "armenian"
+  Basque     -> "basque"
+  Bengali    -> "bengali"
+  Brazilian  -> "brazilian"
+  Bulgarian  -> "bulgarian"
+  Catalan    -> "catalan"
+  Cjk        -> "cjk"
+  Czech      -> "czech"
+  Danish     -> "danish"
+  Dutch      -> "dutch"
+  English    -> "english"
+  Finnish    -> "finnish"
+  French     -> "french"
+  Galician   -> "galician"
+  German     -> "german"
+  German2    -> "german2"
+  Greek      -> "greek"
+  Hindi      -> "hindi"
+  Hungarian  -> "hungarian"
   Indonesian -> "indonesian"
-  Irish -> "irish"
-  Italian -> "italian"
-  Kp -> "kp"
-  Latvian -> "latvian"
+  Irish      -> "irish"
+  Italian    -> "italian"
+  Kp         -> "kp"
+  Latvian    -> "latvian"
   Lithuanian -> "lithuanian"
-  Lovins -> "lovins"
-  Norwegian -> "norwegian"
-  Persian -> "persian"
-  Porter -> "porter"
+  Lovins     -> "lovins"
+  Norwegian  -> "norwegian"
+  Persian    -> "persian"
+  Porter     -> "porter"
   Portuguese -> "portuguese"
-  Romanian -> "romanian"
-  Russian -> "russian"
-  Sorani -> "sorani"
-  Spanish -> "spanish"
-  Swedish -> "swedish"
-  Thai -> "thai"
-  Turkish -> "turkish"
+  Romanian   -> "romanian"
+  Russian    -> "russian"
+  Sorani     -> "sorani"
+  Spanish    -> "spanish"
+  Swedish    -> "swedish"
+  Thai       -> "thai"
+  Turkish    -> "turkish"
 
 languageFromText :: Text -> Maybe Language
 languageFromText x = case x of
-  "arabic" -> Just Arabic
-  "armenian" -> Just Armenian
-  "basque" -> Just Basque
-  "bengali" -> Just Bengali
-  "brazilian" -> Just Brazilian
-  "bulgarian" -> Just Bulgarian
-  "catalan" -> Just Catalan
-  "cjk" -> Just Cjk
-  "czech" -> Just Czech
-  "danish" -> Just Danish
-  "dutch" -> Just Dutch
-  "english" -> Just English
-  "finnish" -> Just Finnish
-  "french" -> Just French
-  "galician" -> Just Galician
-  "german" -> Just German
-  "german2" -> Just German2
-  "greek" -> Just Greek
-  "hindi" -> Just Hindi
-  "hungarian" -> Just Hungarian
+  "arabic"     -> Just Arabic
+  "armenian"   -> Just Armenian
+  "basque"     -> Just Basque
+  "bengali"    -> Just Bengali
+  "brazilian"  -> Just Brazilian
+  "bulgarian"  -> Just Bulgarian
+  "catalan"    -> Just Catalan
+  "cjk"        -> Just Cjk
+  "czech"      -> Just Czech
+  "danish"     -> Just Danish
+  "dutch"      -> Just Dutch
+  "english"    -> Just English
+  "finnish"    -> Just Finnish
+  "french"     -> Just French
+  "galician"   -> Just Galician
+  "german"     -> Just German
+  "german2"    -> Just German2
+  "greek"      -> Just Greek
+  "hindi"      -> Just Hindi
+  "hungarian"  -> Just Hungarian
   "indonesian" -> Just Indonesian
-  "irish" -> Just Irish
-  "italian" -> Just Italian
-  "kp" -> Just Kp
-  "latvian" -> Just Latvian
+  "irish"      -> Just Irish
+  "italian"    -> Just Italian
+  "kp"         -> Just Kp
+  "latvian"    -> Just Latvian
   "lithuanian" -> Just Lithuanian
-  "lovins" -> Just Lovins
-  "norwegian" -> Just Norwegian
-  "persian" -> Just Persian
-  "porter" -> Just Porter
+  "lovins"     -> Just Lovins
+  "norwegian"  -> Just Norwegian
+  "persian"    -> Just Persian
+  "porter"     -> Just Porter
   "portuguese" -> Just Portuguese
-  "romanian" -> Just Romanian
-  "russian" -> Just Russian
-  "sorani" -> Just Sorani
-  "spanish" -> Just Spanish
-  "swedish" -> Just Swedish
-  "thai" -> Just Thai
-  "turkish" -> Just Turkish
-  _ -> Nothing
+  "romanian"   -> Just Romanian
+  "russian"    -> Just Russian
+  "sorani"     -> Just Sorani
+  "spanish"    -> Just Spanish
+  "swedish"    -> Just Swedish
+  "thai"       -> Just Thai
+  "turkish"    -> Just Turkish
+  _            -> Nothing
 
 data Shingle = Shingle
-  { shingleMaxSize :: Int,
-    shingleMinSize :: Int,
-    shingleOutputUnigrams :: Bool,
+  { shingleMaxSize                    :: Int,
+    shingleMinSize                    :: Int,
+    shingleOutputUnigrams             :: Bool,
     shingleOutputUnigramsIfNoShingles :: Bool,
-    shingleTokenSeparator :: Text,
-    shingleFillerToken :: Text
+    shingleTokenSeparator             :: Text,
+    shingleFillerToken                :: Text
   }
   deriving (Eq, Show, Generic)
