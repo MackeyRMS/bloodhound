@@ -1,5 +1,6 @@
 {-# LANGUAGE DeriveGeneric              #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE LambdaCase                 #-}
 {-# LANGUAGE OverloadedStrings          #-}
 
 module Database.Bloodhound.Internal.Analysis where
@@ -22,13 +23,19 @@ data Analysis = Analysis
 
 instance ToJSON Analysis where
   toJSON (Analysis analyzer tokenizer tokenFilter charFilter normalizer) =
-    object
-      [ "analyzer" .= analyzer,
-        "tokenizer" .= tokenizer,
-        "filter" .= tokenFilter,
-        "char_filter" .= charFilter,
-        "normalizer" .= normalizer
+    omitNulls
+      [ "analyzer" .= nullIfEmpty analyzer,
+        "tokenizer" .= nullIfEmpty tokenizer,
+        "filter" .= nullIfEmpty tokenFilter,
+        "char_filter" .= nullIfEmpty charFilter,
+        "normalizer" .= nullIfEmpty normalizer
       ]
+    where
+      nullIfEmpty :: (Foldable f, ToJSON (f a)) => f a -> Value
+      nullIfEmpty = \case
+        x | null x -> Null
+          | otherwise -> toJSON x
+
 
 instance FromJSON Analysis where
   parseJSON = withObject "Analysis" $ \m ->
