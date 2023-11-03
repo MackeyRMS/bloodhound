@@ -1,39 +1,39 @@
-{-# LANGUAGE CPP #-}
-{-# LANGUAGE DeriveGeneric #-}
-{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE CPP                        #-}
+{-# LANGUAGE DeriveGeneric              #-}
+{-# LANGUAGE FlexibleInstances          #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
-{-# LANGUAGE MultiParamTypeClasses #-}
-{-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE RecordWildCards #-}
-{-# LANGUAGE UndecidableInstances #-}
+{-# LANGUAGE MultiParamTypeClasses      #-}
+{-# LANGUAGE OverloadedStrings          #-}
+{-# LANGUAGE RecordWildCards            #-}
+{-# LANGUAGE UndecidableInstances       #-}
 
 module Database.Bloodhound.Internal.Client where
 
-import Bloodhound.Import
-import qualified Data.Aeson.KeyMap as X
-import qualified Data.HashMap.Strict as HM
-import Data.Map.Strict (Map)
-import Data.Maybe (mapMaybe)
-import qualified Data.SemVer as SemVer
-import qualified Data.Text as T
-import qualified Data.Traversable as DT
-import qualified Data.Vector as V
-import Database.Bloodhound.Internal.Analysis
-import Database.Bloodhound.Internal.Client.BHRequest
-import Database.Bloodhound.Internal.Client.Doc
-import Database.Bloodhound.Internal.Newtypes
-import Database.Bloodhound.Internal.Query
-import Database.Bloodhound.Internal.StringlyTyped
-import GHC.Generics
-import Network.HTTP.Client
-import Text.Read (Read (..))
-import qualified Text.Read as TR
+import           Bloodhound.Import
+import qualified Data.Aeson.KeyMap                             as X
+import qualified Data.HashMap.Strict                           as HM
+import           Data.Map.Strict                               (Map)
+import           Data.Maybe                                    (mapMaybe)
+import qualified Data.SemVer                                   as SemVer
+import qualified Data.Text                                     as T
+import qualified Data.Traversable                              as DT
+import qualified Data.Vector                                   as V
+import           Database.Bloodhound.Internal.Analysis
+import           Database.Bloodhound.Internal.Client.BHRequest
+import           Database.Bloodhound.Internal.Client.Doc
+import           Database.Bloodhound.Internal.Newtypes
+import           Database.Bloodhound.Internal.Query
+import           Database.Bloodhound.Internal.StringlyTyped
+import           GHC.Generics
+import           Network.HTTP.Client
+import qualified Text.Read                                     as TR
+import           Text.Read                                     (Read (..))
 
 -- | Common environment for Elasticsearch calls. Connections will be
 --    pipelined according to the provided HTTP connection manager.
 data BHEnv = BHEnv
-  { bhServer :: Server,
-    bhManager :: Manager,
+  { bhServer      :: Server,
+    bhManager     :: Manager,
     -- | Low-level hook that is run before every request is sent. Used to implement custom authentication strategies. Defaults to 'return' with 'mkBHEnv'.
     bhRequestHook :: Request -> IO Request
   }
@@ -94,9 +94,9 @@ runBH e f = runReaderT (unBH f) e
 
 -- | 'Version' is embedded in 'Status'
 data Version = Version
-  { number :: VersionNumber,
-    build_hash :: BuildHash,
-    build_date :: UTCTime,
+  { number         :: VersionNumber,
+    build_hash     :: BuildHash,
+    build_date     :: UTCTime,
     build_snapshot :: Bool,
     lucene_version :: VersionNumber
   }
@@ -112,11 +112,11 @@ newtype VersionNumber = VersionNumber
 --
 --   <http://www.elastic.co/guide/en/elasticsearch/reference/current/indices-status.html#indices-status>
 data Status = Status
-  { name :: Text,
+  { name         :: Text,
     cluster_name :: Text,
     cluster_uuid :: Text,
-    version :: Version,
-    tagline :: Text
+    version      :: Version,
+    tagline      :: Text
   }
   deriving (Eq, Show)
 
@@ -135,8 +135,8 @@ instance FromJSON Status where
 --
 --   <http://www.elastic.co/guide/en/elasticsearch/reference/current/indices-create-index.html>
 data IndexSettings = IndexSettings
-  { indexShards :: ShardCount,
-    indexReplicas :: ReplicaCount,
+  { indexShards         :: ShardCount,
+    indexReplicas       :: ReplicaCount,
     indexMappingsLimits :: IndexMappingsLimits
   }
   deriving (Eq, Show, Generic)
@@ -173,9 +173,9 @@ defaultIndexSettings = IndexSettings (ShardCount 3) (ReplicaCount 2) defaultInde
 -- | 'IndexMappingsLimits is used to configure index's limits.
 --   <https://www.elastic.co/guide/en/elasticsearch/reference/master/mapping-settings-limit.html>
 data IndexMappingsLimits = IndexMappingsLimits
-  { indexMappingsLimitDepth :: Maybe Int,
-    indexMappingsLimitNestedFields :: Maybe Int,
-    indexMappingsLimitNestedObjects :: Maybe Int,
+  { indexMappingsLimitDepth           :: Maybe Int,
+    indexMappingsLimitNestedFields    :: Maybe Int,
+    indexMappingsLimitNestedObjects   :: Maybe Int,
     indexMappingsLimitFieldNameLength :: Maybe Int
   }
   deriving (Eq, Show, Generic)
@@ -213,7 +213,7 @@ defaultIndexMappingsLimits = IndexMappingsLimits Nothing Nothing Nothing Nothing
 --    for more info.
 data ForceMergeIndexSettings = ForceMergeIndexSettings
   { -- | Number of segments to optimize to. 1 will fully optimize the index. If omitted, the default behavior is to only optimize if the server deems it necessary.
-    maxNumSegments :: Maybe Int,
+    maxNumSegments     :: Maybe Int,
     -- | Should the optimize process only expunge segments with deletes in them? If the purpose of the optimization is to free disk space, this should be set to True.
     onlyExpungeDeletes :: Bool,
     -- | Should a flush be performed after the optimize.
@@ -298,7 +298,7 @@ parseAttrFilter :: Value -> Parser (NonEmpty NodeAttrFilter)
 parseAttrFilter = withObject "NonEmpty NodeAttrFilter" parse
   where
     parse o = case X.toList o of
-      [] -> fail "Expected non-empty list of NodeAttrFilters"
+      []     -> fail "Expected non-empty list of NodeAttrFilters"
       x : xs -> DT.mapM (uncurry parse') (x :| xs)
     parse' n = withText "Text" $ \t ->
       case T.splitOn "," t of
@@ -459,9 +459,9 @@ data ReplicaBounds
   deriving (Eq, Show)
 
 instance ToJSON ReplicaBounds where
-  toJSON (ReplicasBounded a b) = String (showText a <> "-" <> showText b)
+  toJSON (ReplicasBounded a b)    = String (showText a <> "-" <> showText b)
   toJSON (ReplicasLowerBounded a) = String (showText a <> "-all")
-  toJSON ReplicasUnbounded = Bool False
+  toJSON ReplicasUnbounded        = Bool False
 
 instance FromJSON ReplicaBounds where
   parseJSON v =
@@ -476,7 +476,7 @@ instance FromJSON ReplicaBounds where
             <*> parseReadText b
         _ -> fail ("Could not parse ReplicaBounds: " <> show t)
       parseBool False = pure ReplicasUnbounded
-      parseBool _ = fail "ReplicasUnbounded cannot be represented with True"
+      parseBool _     = fail "ReplicasUnbounded cannot be represented with True"
 
 data Compression
   = -- | Compress with LZ4
@@ -490,13 +490,13 @@ data Compression
 instance ToJSON Compression where
   toJSON x = case x of
     CompressionDefault -> toJSON ("default" :: Text)
-    CompressionBest -> toJSON ("best_compression" :: Text)
+    CompressionBest    -> toJSON ("best_compression" :: Text)
 
 instance FromJSON Compression where
   parseJSON = withText "Compression" $ \t -> case t of
-    "default" -> return CompressionDefault
+    "default"          -> return CompressionDefault
     "best_compression" -> return CompressionBest
-    _ -> fail "invalid compression codec"
+    _                  -> fail "invalid compression codec"
 
 -- | A measure of bytes used for various configurations. You may want
 -- to use smart constructors like 'gigabytes' for larger values.
@@ -528,15 +528,15 @@ data FSType
   deriving (Eq, Show, Generic)
 
 instance ToJSON FSType where
-  toJSON FSSimple = "simple"
+  toJSON FSSimple   = "simple"
   toJSON FSBuffered = "buffered"
 
 instance FromJSON FSType where
   parseJSON = withText "FSType" parse
     where
-      parse "simple" = pure FSSimple
+      parse "simple"   = pure FSSimple
       parse "buffered" = pure FSBuffered
-      parse t = fail ("Invalid FSType: " <> show t)
+      parse t          = fail ("Invalid FSType: " <> show t)
 
 data InitialShardCount
   = QuorumShards
@@ -551,21 +551,21 @@ instance FromJSON InitialShardCount where
     withText "InitialShardCount" parseText v
       <|> ExplicitShards <$> parseJSON v
     where
-      parseText "quorum" = pure QuorumShards
+      parseText "quorum"   = pure QuorumShards
       parseText "quorum-1" = pure QuorumMinus1Shards
-      parseText "full" = pure FullShards
-      parseText "full-1" = pure FullMinus1Shards
-      parseText _ = mzero
+      parseText "full"     = pure FullShards
+      parseText "full-1"   = pure FullMinus1Shards
+      parseText _          = mzero
 
 instance ToJSON InitialShardCount where
-  toJSON QuorumShards = String "quorum"
+  toJSON QuorumShards       = String "quorum"
   toJSON QuorumMinus1Shards = String "quorum-1"
-  toJSON FullShards = String "full"
-  toJSON FullMinus1Shards = String "full-1"
+  toJSON FullShards         = String "full"
+  toJSON FullMinus1Shards   = String "full-1"
   toJSON (ExplicitShards x) = toJSON x
 
 data NodeAttrFilter = NodeAttrFilter
-  { nodeAttrFilterName :: NodeAttrName,
+  { nodeAttrFilterName   :: NodeAttrName,
     nodeAttrFilterValues :: NonEmpty Text
   }
   deriving (Eq, Ord, Show)
@@ -579,7 +579,7 @@ data CompoundFormat
   deriving (Eq, Show, Generic)
 
 instance ToJSON CompoundFormat where
-  toJSON (CompoundFileFormat x) = Bool x
+  toJSON (CompoundFileFormat x)       = Bool x
   toJSON (MergeSegmentVsTotalIndex x) = toJSON x
 
 instance FromJSON CompoundFormat where
@@ -600,9 +600,9 @@ instance FromJSON NominalDiffTimeJSON where
         _ -> fail "Invalid or missing NominalDiffTime unit (expected s)"
 
 data IndexSettingsSummary = IndexSettingsSummary
-  { sSummaryIndexName :: IndexName,
+  { sSummaryIndexName     :: IndexName,
     sSummaryFixedSettings :: IndexSettings,
-    sSummaryUpdateable :: [UpdatableIndexSetting]
+    sSummaryUpdateable    :: [UpdatableIndexSetting]
   }
   deriving (Eq, Show)
 
@@ -627,7 +627,7 @@ instance FromJSON IndexSettingsSummary where
             <*> (fmap (filter (not . redundant)) . parseSettings =<< o' .: "settings")
         _ -> fail "Expected single-key object with index name"
       redundant (NumberOfReplicas _) = True
-      redundant _ = False
+      redundant _                    = False
 
 -- | 'OpenCloseIndex' is a sum type for opening and closing indices.
 --
@@ -673,12 +673,12 @@ instance ToJSON IndexTemplate where
       (toJSON s)
     where
       merge (Object o1) (Object o2) = toJSON $ X.union o1 o2
-      merge o Null = o
-      merge _ _ = undefined
+      merge o Null                  = o
+      merge _ _                     = undefined
 
 data MappingField = MappingField
   { mappingFieldName :: FieldName,
-    fieldDefinition :: FieldDefinition
+    fieldDefinition  :: FieldDefinition
   }
   deriving (Eq, Show)
 
@@ -699,7 +699,7 @@ data UpsertActionMetadata
 
 buildUpsertActionMetadata :: UpsertActionMetadata -> Pair
 buildUpsertActionMetadata (UA_RetryOnConflict i) = "retry_on_conflict" .= i
-buildUpsertActionMetadata (UA_Version i) = "_version" .= i
+buildUpsertActionMetadata (UA_Version i)         = "_version" .= i
 
 data UpsertPayload
   = UpsertDoc Value
@@ -718,19 +718,19 @@ data AllocationPolicy
   deriving (Eq, Show, Generic)
 
 instance ToJSON AllocationPolicy where
-  toJSON AllocAll = String "all"
-  toJSON AllocPrimaries = String "primaries"
+  toJSON AllocAll          = String "all"
+  toJSON AllocPrimaries    = String "primaries"
   toJSON AllocNewPrimaries = String "new_primaries"
-  toJSON AllocNone = String "none"
+  toJSON AllocNone         = String "none"
 
 instance FromJSON AllocationPolicy where
   parseJSON = withText "AllocationPolicy" parse
     where
-      parse "all" = pure AllocAll
-      parse "primaries" = pure AllocPrimaries
+      parse "all"           = pure AllocAll
+      parse "primaries"     = pure AllocPrimaries
       parse "new_primaries" = pure AllocNewPrimaries
-      parse "none" = pure AllocNone
-      parse t = fail ("Invlaid AllocationPolicy: " <> show t)
+      parse "none"          = pure AllocNone
+      parse t               = fail ("Invlaid AllocationPolicy: " <> show t)
 
 -- | 'BulkOperation' is a sum type for expressing the four kinds of bulk
 --    operation index, create, delete, and update. 'BulkIndex' behaves like an
@@ -764,7 +764,7 @@ data BulkOperation
   deriving (Eq, Show)
 
 data IndexAlias = IndexAlias
-  { srcIndex :: IndexName,
+  { srcIndex   :: IndexName,
     indexAlias :: IndexAliasName
   }
   deriving (Eq, Show)
@@ -776,7 +776,7 @@ data IndexAliasAction
 
 data IndexAliasCreate = IndexAliasCreate
   { aliasCreateRouting :: Maybe AliasRouting,
-    aliasCreateFilter :: Maybe Filter
+    aliasCreateFilter  :: Maybe Filter
   }
   deriving (Eq, Show)
 
@@ -818,13 +818,14 @@ instance FromJSON IndexAliasesSummary where
           IndexAliasSummary indexAlias <$> parseJSON v
 
 instance ToJSON IndexAliasAction where
-  toJSON (AddAlias ia opts) = object ["add" .= (iaObj <> optsObj)]
-    where
-      Object iaObj = toJSON ia
-      Object optsObj = toJSON opts
-  toJSON (RemoveAlias ia) = object ["remove" .= iaObj]
-    where
-      Object iaObj = toJSON ia
+  toJSON (AddAlias ia opts) =
+    case (toJSON ia, toJSON opts) of
+      (Object iaObj, Object optsObj) -> object ["add" .= (iaObj <> optsObj)]
+      _                              -> error "ToJSON IndexAliasAction AddAlias"
+  toJSON (RemoveAlias ia) =
+    case toJSON ia of
+      (Object iaObj) -> object ["remove" .= iaObj]
+      _              -> error "ToJSON IndexAliasAction RemoveAlias"
 
 instance ToJSON IndexAlias where
   toJSON IndexAlias {..} =
@@ -837,7 +838,10 @@ instance ToJSON IndexAliasCreate where
   toJSON IndexAliasCreate {..} = Object (filterObj <> routingObj)
     where
       filterObj = maybe mempty (X.singleton "filter" . toJSON) aliasCreateFilter
-      Object routingObj = maybe (Object mempty) toJSON aliasCreateRouting
+      routingObj =
+        case toJSON <$> aliasCreateRouting of
+          Just (Object o) -> o
+          _               -> mempty
 
 instance ToJSON AliasRouting where
   toJSON (AllAliasRouting v) = object ["routing" .= v]
@@ -870,7 +874,7 @@ instance FromJSON IndexAliasCreate where
 
 -- | 'IndexAliasSummary' is a summary of an index alias configured for a server.
 data IndexAliasSummary = IndexAliasSummary
-  { indexAliasSummaryAlias :: IndexAlias,
+  { indexAliasSummaryAlias  :: IndexAlias,
     indexAliasSummaryCreate :: IndexAliasCreate
   }
   deriving (Eq, Show)
@@ -885,7 +889,7 @@ data JoinRelation
 -- added, you should probably prefer to start with 'defaultIndexDocumentSettings'
 data IndexDocumentSettings = IndexDocumentSettings
   { idsVersionControl :: VersionControl,
-    idsJoinRelation :: Maybe JoinRelation
+    idsJoinRelation   :: Maybe JoinRelation
   }
   deriving (Eq, Show)
 
@@ -957,8 +961,8 @@ newtype SnapshotRepoName = SnapshotRepoName {snapshotRepoName :: Text}
 -- type, consider submitting a pull request to have it included in the
 -- library proper
 data GenericSnapshotRepo = GenericSnapshotRepo
-  { gSnapshotRepoName :: SnapshotRepoName,
-    gSnapshotRepoType :: SnapshotRepoType,
+  { gSnapshotRepoName     :: SnapshotRepoName,
+    gSnapshotRepoType     :: SnapshotRepoType,
     gSnapshotRepoSettings :: GenericSnapshotRepoSettings
   }
   deriving (Eq, Show)
@@ -998,7 +1002,7 @@ instance FromJSON SnapshotVerification where
 
 -- | A node that has verified a snapshot
 data SnapshotNodeVerification = SnapshotNodeVerification
-  { snvFullId :: FullNodeId,
+  { snvFullId   :: FullNodeId,
     snvNodeName :: NodeName
   }
   deriving (Eq, Show)
@@ -1017,44 +1021,44 @@ newtype ClusterName = ClusterName {clusterName :: Text}
   deriving (Eq, Ord, Show, FromJSON)
 
 data NodesInfo = NodesInfo
-  { nodesInfo :: [NodeInfo],
+  { nodesInfo        :: [NodeInfo],
     nodesClusterName :: ClusterName
   }
   deriving (Eq, Show)
 
 data NodesStats = NodesStats
-  { nodesStats :: [NodeStats],
+  { nodesStats            :: [NodeStats],
     nodesStatsClusterName :: ClusterName
   }
   deriving (Eq, Show)
 
 data NodeStats = NodeStats
-  { nodeStatsName :: NodeName,
-    nodeStatsFullId :: FullNodeId,
+  { nodeStatsName          :: NodeName,
+    nodeStatsFullId        :: FullNodeId,
     nodeStatsBreakersStats :: Maybe NodeBreakersStats,
-    nodeStatsHTTP :: NodeHTTPStats,
-    nodeStatsTransport :: NodeTransportStats,
-    nodeStatsFS :: NodeFSStats,
-    nodeStatsNetwork :: Maybe NodeNetworkStats,
-    nodeStatsThreadPool :: Map Text NodeThreadPoolStats,
-    nodeStatsJVM :: NodeJVMStats,
-    nodeStatsProcess :: NodeProcessStats,
-    nodeStatsOS :: NodeOSStats,
-    nodeStatsIndices :: NodeIndicesStats
+    nodeStatsHTTP          :: NodeHTTPStats,
+    nodeStatsTransport     :: NodeTransportStats,
+    nodeStatsFS            :: NodeFSStats,
+    nodeStatsNetwork       :: Maybe NodeNetworkStats,
+    nodeStatsThreadPool    :: Map Text NodeThreadPoolStats,
+    nodeStatsJVM           :: NodeJVMStats,
+    nodeStatsProcess       :: NodeProcessStats,
+    nodeStatsOS            :: NodeOSStats,
+    nodeStatsIndices       :: NodeIndicesStats
   }
   deriving (Eq, Show)
 
 data NodeBreakersStats = NodeBreakersStats
-  { nodeStatsParentBreaker :: NodeBreakerStats,
-    nodeStatsRequestBreaker :: NodeBreakerStats,
+  { nodeStatsParentBreaker    :: NodeBreakerStats,
+    nodeStatsRequestBreaker   :: NodeBreakerStats,
     nodeStatsFieldDataBreaker :: NodeBreakerStats
   }
   deriving (Eq, Show)
 
 data NodeBreakerStats = NodeBreakerStats
-  { nodeBreakersTripped :: Int,
-    nodeBreakersOverhead :: Double,
-    nodeBreakersEstSize :: Bytes,
+  { nodeBreakersTripped   :: Int,
+    nodeBreakersOverhead  :: Double,
+    nodeBreakersEstSize   :: Bytes,
     nodeBreakersLimitSize :: Bytes
   }
   deriving (Eq, Show)
@@ -1066,221 +1070,221 @@ data NodeHTTPStats = NodeHTTPStats
   deriving (Eq, Show)
 
 data NodeTransportStats = NodeTransportStats
-  { nodeTransportTXSize :: Bytes,
-    nodeTransportCount :: Int,
-    nodeTransportRXSize :: Bytes,
-    nodeTransportRXCount :: Int,
+  { nodeTransportTXSize     :: Bytes,
+    nodeTransportCount      :: Int,
+    nodeTransportRXSize     :: Bytes,
+    nodeTransportRXCount    :: Int,
     nodeTransportServerOpen :: Int
   }
   deriving (Eq, Show)
 
 data NodeFSStats = NodeFSStats
   { nodeFSDataPaths :: [NodeDataPathStats],
-    nodeFSTotal :: NodeFSTotalStats,
+    nodeFSTotal     :: NodeFSTotalStats,
     nodeFSTimestamp :: UTCTime
   }
   deriving (Eq, Show)
 
 data NodeDataPathStats = NodeDataPathStats
   { nodeDataPathDiskServiceTime :: Maybe Double,
-    nodeDataPathDiskQueue :: Maybe Double,
-    nodeDataPathIOSize :: Maybe Bytes,
-    nodeDataPathWriteSize :: Maybe Bytes,
-    nodeDataPathReadSize :: Maybe Bytes,
-    nodeDataPathIOOps :: Maybe Int,
-    nodeDataPathWrites :: Maybe Int,
-    nodeDataPathReads :: Maybe Int,
-    nodeDataPathAvailable :: Bytes,
-    nodeDataPathFree :: Bytes,
-    nodeDataPathTotal :: Bytes,
-    nodeDataPathType :: Maybe Text,
-    nodeDataPathDevice :: Maybe Text,
-    nodeDataPathMount :: Text,
-    nodeDataPathPath :: Text
+    nodeDataPathDiskQueue       :: Maybe Double,
+    nodeDataPathIOSize          :: Maybe Bytes,
+    nodeDataPathWriteSize       :: Maybe Bytes,
+    nodeDataPathReadSize        :: Maybe Bytes,
+    nodeDataPathIOOps           :: Maybe Int,
+    nodeDataPathWrites          :: Maybe Int,
+    nodeDataPathReads           :: Maybe Int,
+    nodeDataPathAvailable       :: Bytes,
+    nodeDataPathFree            :: Bytes,
+    nodeDataPathTotal           :: Bytes,
+    nodeDataPathType            :: Maybe Text,
+    nodeDataPathDevice          :: Maybe Text,
+    nodeDataPathMount           :: Text,
+    nodeDataPathPath            :: Text
   }
   deriving (Eq, Show)
 
 data NodeFSTotalStats = NodeFSTotalStats
   { nodeFSTotalDiskServiceTime :: Maybe Double,
-    nodeFSTotalDiskQueue :: Maybe Double,
-    nodeFSTotalIOSize :: Maybe Bytes,
-    nodeFSTotalWriteSize :: Maybe Bytes,
-    nodeFSTotalReadSize :: Maybe Bytes,
-    nodeFSTotalIOOps :: Maybe Int,
-    nodeFSTotalWrites :: Maybe Int,
-    nodeFSTotalReads :: Maybe Int,
-    nodeFSTotalAvailable :: Bytes,
-    nodeFSTotalFree :: Bytes,
-    nodeFSTotalTotal :: Bytes
+    nodeFSTotalDiskQueue       :: Maybe Double,
+    nodeFSTotalIOSize          :: Maybe Bytes,
+    nodeFSTotalWriteSize       :: Maybe Bytes,
+    nodeFSTotalReadSize        :: Maybe Bytes,
+    nodeFSTotalIOOps           :: Maybe Int,
+    nodeFSTotalWrites          :: Maybe Int,
+    nodeFSTotalReads           :: Maybe Int,
+    nodeFSTotalAvailable       :: Bytes,
+    nodeFSTotalFree            :: Bytes,
+    nodeFSTotalTotal           :: Bytes
   }
   deriving (Eq, Show)
 
 data NodeNetworkStats = NodeNetworkStats
-  { nodeNetTCPOutRSTs :: Int,
-    nodeNetTCPInErrs :: Int,
+  { nodeNetTCPOutRSTs      :: Int,
+    nodeNetTCPInErrs       :: Int,
     nodeNetTCPAttemptFails :: Int,
-    nodeNetTCPEstabResets :: Int,
-    nodeNetTCPRetransSegs :: Int,
-    nodeNetTCPOutSegs :: Int,
-    nodeNetTCPInSegs :: Int,
-    nodeNetTCPCurrEstab :: Int,
+    nodeNetTCPEstabResets  :: Int,
+    nodeNetTCPRetransSegs  :: Int,
+    nodeNetTCPOutSegs      :: Int,
+    nodeNetTCPInSegs       :: Int,
+    nodeNetTCPCurrEstab    :: Int,
     nodeNetTCPPassiveOpens :: Int,
-    nodeNetTCPActiveOpens :: Int
+    nodeNetTCPActiveOpens  :: Int
   }
   deriving (Eq, Show)
 
 data NodeThreadPoolStats = NodeThreadPoolStats
   { nodeThreadPoolCompleted :: Int,
-    nodeThreadPoolLargest :: Int,
-    nodeThreadPoolRejected :: Int,
-    nodeThreadPoolActive :: Int,
-    nodeThreadPoolQueue :: Int,
-    nodeThreadPoolThreads :: Int
+    nodeThreadPoolLargest   :: Int,
+    nodeThreadPoolRejected  :: Int,
+    nodeThreadPoolActive    :: Int,
+    nodeThreadPoolQueue     :: Int,
+    nodeThreadPoolThreads   :: Int
   }
   deriving (Eq, Show)
 
 data NodeJVMStats = NodeJVMStats
   { nodeJVMStatsMappedBufferPool :: JVMBufferPoolStats,
     nodeJVMStatsDirectBufferPool :: JVMBufferPoolStats,
-    nodeJVMStatsGCOldCollector :: JVMGCStats,
+    nodeJVMStatsGCOldCollector   :: JVMGCStats,
     nodeJVMStatsGCYoungCollector :: JVMGCStats,
     nodeJVMStatsPeakThreadsCount :: Int,
-    nodeJVMStatsThreadsCount :: Int,
-    nodeJVMStatsOldPool :: JVMPoolStats,
-    nodeJVMStatsSurvivorPool :: JVMPoolStats,
-    nodeJVMStatsYoungPool :: JVMPoolStats,
+    nodeJVMStatsThreadsCount     :: Int,
+    nodeJVMStatsOldPool          :: JVMPoolStats,
+    nodeJVMStatsSurvivorPool     :: JVMPoolStats,
+    nodeJVMStatsYoungPool        :: JVMPoolStats,
     nodeJVMStatsNonHeapCommitted :: Bytes,
-    nodeJVMStatsNonHeapUsed :: Bytes,
-    nodeJVMStatsHeapMax :: Bytes,
-    nodeJVMStatsHeapCommitted :: Bytes,
-    nodeJVMStatsHeapUsedPercent :: Int,
-    nodeJVMStatsHeapUsed :: Bytes,
-    nodeJVMStatsUptime :: NominalDiffTime,
-    nodeJVMStatsTimestamp :: UTCTime
+    nodeJVMStatsNonHeapUsed      :: Bytes,
+    nodeJVMStatsHeapMax          :: Bytes,
+    nodeJVMStatsHeapCommitted    :: Bytes,
+    nodeJVMStatsHeapUsedPercent  :: Int,
+    nodeJVMStatsHeapUsed         :: Bytes,
+    nodeJVMStatsUptime           :: NominalDiffTime,
+    nodeJVMStatsTimestamp        :: UTCTime
   }
   deriving (Eq, Show)
 
 data JVMBufferPoolStats = JVMBufferPoolStats
   { jvmBufferPoolStatsTotalCapacity :: Bytes,
-    jvmBufferPoolStatsUsed :: Bytes,
-    jvmBufferPoolStatsCount :: Int
+    jvmBufferPoolStatsUsed          :: Bytes,
+    jvmBufferPoolStatsCount         :: Int
   }
   deriving (Eq, Show)
 
 data JVMGCStats = JVMGCStats
-  { jvmGCStatsCollectionTime :: NominalDiffTime,
+  { jvmGCStatsCollectionTime  :: NominalDiffTime,
     jvmGCStatsCollectionCount :: Int
   }
   deriving (Eq, Show)
 
 data JVMPoolStats = JVMPoolStats
-  { jvmPoolStatsPeakMax :: Bytes,
+  { jvmPoolStatsPeakMax  :: Bytes,
     jvmPoolStatsPeakUsed :: Bytes,
-    jvmPoolStatsMax :: Bytes,
-    jvmPoolStatsUsed :: Bytes
+    jvmPoolStatsMax      :: Bytes,
+    jvmPoolStatsUsed     :: Bytes
   }
   deriving (Eq, Show)
 
 data NodeProcessStats = NodeProcessStats
-  { nodeProcessTimestamp :: UTCTime,
-    nodeProcessOpenFDs :: Int,
-    nodeProcessMaxFDs :: Int,
-    nodeProcessCPUPercent :: Int,
-    nodeProcessCPUTotal :: NominalDiffTime,
+  { nodeProcessTimestamp       :: UTCTime,
+    nodeProcessOpenFDs         :: Int,
+    nodeProcessMaxFDs          :: Int,
+    nodeProcessCPUPercent      :: Int,
+    nodeProcessCPUTotal        :: NominalDiffTime,
     nodeProcessMemTotalVirtual :: Bytes
   }
   deriving (Eq, Show)
 
 data NodeOSStats = NodeOSStats
-  { nodeOSTimestamp :: UTCTime,
-    nodeOSCPUPercent :: Int,
-    nodeOSLoad :: Maybe LoadAvgs,
-    nodeOSMemTotal :: Bytes,
-    nodeOSMemFree :: Bytes,
+  { nodeOSTimestamp      :: UTCTime,
+    nodeOSCPUPercent     :: Int,
+    nodeOSLoad           :: Maybe LoadAvgs,
+    nodeOSMemTotal       :: Bytes,
+    nodeOSMemFree        :: Bytes,
     nodeOSMemFreePercent :: Int,
-    nodeOSMemUsed :: Bytes,
+    nodeOSMemUsed        :: Bytes,
     nodeOSMemUsedPercent :: Int,
-    nodeOSSwapTotal :: Bytes,
-    nodeOSSwapFree :: Bytes,
-    nodeOSSwapUsed :: Bytes
+    nodeOSSwapTotal      :: Bytes,
+    nodeOSSwapFree       :: Bytes,
+    nodeOSSwapUsed       :: Bytes
   }
   deriving (Eq, Show)
 
 data LoadAvgs = LoadAvgs
-  { loadAvg1Min :: Double,
-    loadAvg5Min :: Double,
+  { loadAvg1Min  :: Double,
+    loadAvg5Min  :: Double,
     loadAvg15Min :: Double
   }
   deriving (Eq, Show)
 
 data NodeIndicesStats = NodeIndicesStats
-  { nodeIndicesStatsRecoveryThrottleTime :: Maybe NominalDiffTime,
+  { nodeIndicesStatsRecoveryThrottleTime    :: Maybe NominalDiffTime,
     nodeIndicesStatsRecoveryCurrentAsTarget :: Maybe Int,
     nodeIndicesStatsRecoveryCurrentAsSource :: Maybe Int,
-    nodeIndicesStatsQueryCacheMisses :: Maybe Int,
-    nodeIndicesStatsQueryCacheHits :: Maybe Int,
-    nodeIndicesStatsQueryCacheEvictions :: Maybe Int,
-    nodeIndicesStatsQueryCacheSize :: Maybe Bytes,
-    nodeIndicesStatsSuggestCurrent :: Maybe Int,
-    nodeIndicesStatsSuggestTime :: Maybe NominalDiffTime,
-    nodeIndicesStatsSuggestTotal :: Maybe Int,
-    nodeIndicesStatsTranslogSize :: Bytes,
-    nodeIndicesStatsTranslogOps :: Int,
-    nodeIndicesStatsSegFixedBitSetMemory :: Maybe Bytes,
-    nodeIndicesStatsSegVersionMapMemory :: Bytes,
+    nodeIndicesStatsQueryCacheMisses        :: Maybe Int,
+    nodeIndicesStatsQueryCacheHits          :: Maybe Int,
+    nodeIndicesStatsQueryCacheEvictions     :: Maybe Int,
+    nodeIndicesStatsQueryCacheSize          :: Maybe Bytes,
+    nodeIndicesStatsSuggestCurrent          :: Maybe Int,
+    nodeIndicesStatsSuggestTime             :: Maybe NominalDiffTime,
+    nodeIndicesStatsSuggestTotal            :: Maybe Int,
+    nodeIndicesStatsTranslogSize            :: Bytes,
+    nodeIndicesStatsTranslogOps             :: Int,
+    nodeIndicesStatsSegFixedBitSetMemory    :: Maybe Bytes,
+    nodeIndicesStatsSegVersionMapMemory     :: Bytes,
     nodeIndicesStatsSegIndexWriterMaxMemory :: Maybe Bytes,
-    nodeIndicesStatsSegIndexWriterMemory :: Bytes,
-    nodeIndicesStatsSegMemory :: Bytes,
-    nodeIndicesStatsSegCount :: Int,
-    nodeIndicesStatsCompletionSize :: Bytes,
-    nodeIndicesStatsPercolateQueries :: Maybe Int,
-    nodeIndicesStatsPercolateMemory :: Maybe Bytes,
-    nodeIndicesStatsPercolateCurrent :: Maybe Int,
-    nodeIndicesStatsPercolateTime :: Maybe NominalDiffTime,
-    nodeIndicesStatsPercolateTotal :: Maybe Int,
-    nodeIndicesStatsFieldDataEvictions :: Int,
-    nodeIndicesStatsFieldDataMemory :: Bytes,
-    nodeIndicesStatsWarmerTotalTime :: NominalDiffTime,
-    nodeIndicesStatsWarmerTotal :: Int,
-    nodeIndicesStatsWarmerCurrent :: Int,
-    nodeIndicesStatsFlushTotalTime :: NominalDiffTime,
-    nodeIndicesStatsFlushTotal :: Int,
-    nodeIndicesStatsRefreshTotalTime :: NominalDiffTime,
-    nodeIndicesStatsRefreshTotal :: Int,
-    nodeIndicesStatsMergesTotalSize :: Bytes,
-    nodeIndicesStatsMergesTotalDocs :: Int,
-    nodeIndicesStatsMergesTotalTime :: NominalDiffTime,
-    nodeIndicesStatsMergesTotal :: Int,
-    nodeIndicesStatsMergesCurrentSize :: Bytes,
-    nodeIndicesStatsMergesCurrentDocs :: Int,
-    nodeIndicesStatsMergesCurrent :: Int,
-    nodeIndicesStatsSearchFetchCurrent :: Int,
-    nodeIndicesStatsSearchFetchTime :: NominalDiffTime,
-    nodeIndicesStatsSearchFetchTotal :: Int,
-    nodeIndicesStatsSearchQueryCurrent :: Int,
-    nodeIndicesStatsSearchQueryTime :: NominalDiffTime,
-    nodeIndicesStatsSearchQueryTotal :: Int,
-    nodeIndicesStatsSearchOpenContexts :: Int,
-    nodeIndicesStatsGetCurrent :: Int,
-    nodeIndicesStatsGetMissingTime :: NominalDiffTime,
-    nodeIndicesStatsGetMissingTotal :: Int,
-    nodeIndicesStatsGetExistsTime :: NominalDiffTime,
-    nodeIndicesStatsGetExistsTotal :: Int,
-    nodeIndicesStatsGetTime :: NominalDiffTime,
-    nodeIndicesStatsGetTotal :: Int,
-    nodeIndicesStatsIndexingThrottleTime :: Maybe NominalDiffTime,
-    nodeIndicesStatsIndexingIsThrottled :: Maybe Bool,
+    nodeIndicesStatsSegIndexWriterMemory    :: Bytes,
+    nodeIndicesStatsSegMemory               :: Bytes,
+    nodeIndicesStatsSegCount                :: Int,
+    nodeIndicesStatsCompletionSize          :: Bytes,
+    nodeIndicesStatsPercolateQueries        :: Maybe Int,
+    nodeIndicesStatsPercolateMemory         :: Maybe Bytes,
+    nodeIndicesStatsPercolateCurrent        :: Maybe Int,
+    nodeIndicesStatsPercolateTime           :: Maybe NominalDiffTime,
+    nodeIndicesStatsPercolateTotal          :: Maybe Int,
+    nodeIndicesStatsFieldDataEvictions      :: Int,
+    nodeIndicesStatsFieldDataMemory         :: Bytes,
+    nodeIndicesStatsWarmerTotalTime         :: NominalDiffTime,
+    nodeIndicesStatsWarmerTotal             :: Int,
+    nodeIndicesStatsWarmerCurrent           :: Int,
+    nodeIndicesStatsFlushTotalTime          :: NominalDiffTime,
+    nodeIndicesStatsFlushTotal              :: Int,
+    nodeIndicesStatsRefreshTotalTime        :: NominalDiffTime,
+    nodeIndicesStatsRefreshTotal            :: Int,
+    nodeIndicesStatsMergesTotalSize         :: Bytes,
+    nodeIndicesStatsMergesTotalDocs         :: Int,
+    nodeIndicesStatsMergesTotalTime         :: NominalDiffTime,
+    nodeIndicesStatsMergesTotal             :: Int,
+    nodeIndicesStatsMergesCurrentSize       :: Bytes,
+    nodeIndicesStatsMergesCurrentDocs       :: Int,
+    nodeIndicesStatsMergesCurrent           :: Int,
+    nodeIndicesStatsSearchFetchCurrent      :: Int,
+    nodeIndicesStatsSearchFetchTime         :: NominalDiffTime,
+    nodeIndicesStatsSearchFetchTotal        :: Int,
+    nodeIndicesStatsSearchQueryCurrent      :: Int,
+    nodeIndicesStatsSearchQueryTime         :: NominalDiffTime,
+    nodeIndicesStatsSearchQueryTotal        :: Int,
+    nodeIndicesStatsSearchOpenContexts      :: Int,
+    nodeIndicesStatsGetCurrent              :: Int,
+    nodeIndicesStatsGetMissingTime          :: NominalDiffTime,
+    nodeIndicesStatsGetMissingTotal         :: Int,
+    nodeIndicesStatsGetExistsTime           :: NominalDiffTime,
+    nodeIndicesStatsGetExistsTotal          :: Int,
+    nodeIndicesStatsGetTime                 :: NominalDiffTime,
+    nodeIndicesStatsGetTotal                :: Int,
+    nodeIndicesStatsIndexingThrottleTime    :: Maybe NominalDiffTime,
+    nodeIndicesStatsIndexingIsThrottled     :: Maybe Bool,
     nodeIndicesStatsIndexingNoopUpdateTotal :: Maybe Int,
-    nodeIndicesStatsIndexingDeleteCurrent :: Int,
-    nodeIndicesStatsIndexingDeleteTime :: NominalDiffTime,
-    nodeIndicesStatsIndexingDeleteTotal :: Int,
-    nodeIndicesStatsIndexingIndexCurrent :: Int,
-    nodeIndicesStatsIndexingIndexTime :: NominalDiffTime,
-    nodeIndicesStatsIndexingTotal :: Int,
-    nodeIndicesStatsStoreThrottleTime :: Maybe NominalDiffTime,
-    nodeIndicesStatsStoreSize :: Bytes,
-    nodeIndicesStatsDocsDeleted :: Int,
-    nodeIndicesStatsDocsCount :: Int
+    nodeIndicesStatsIndexingDeleteCurrent   :: Int,
+    nodeIndicesStatsIndexingDeleteTime      :: NominalDiffTime,
+    nodeIndicesStatsIndexingDeleteTotal     :: Int,
+    nodeIndicesStatsIndexingIndexCurrent    :: Int,
+    nodeIndicesStatsIndexingIndexTime       :: NominalDiffTime,
+    nodeIndicesStatsIndexingTotal           :: Int,
+    nodeIndicesStatsStoreThrottleTime       :: Maybe NominalDiffTime,
+    nodeIndicesStatsStoreSize               :: Bytes,
+    nodeIndicesStatsDocsDeleted             :: Int,
+    nodeIndicesStatsDocsCount               :: Int
   }
   deriving (Eq, Show)
 
@@ -1298,62 +1302,62 @@ newtype PluginName = PluginName {pluginName :: Text}
   deriving (Eq, Ord, Show, FromJSON)
 
 data NodeInfo = NodeInfo
-  { nodeInfoHTTPAddress :: Maybe EsAddress,
-    nodeInfoBuild :: BuildHash,
-    nodeInfoESVersion :: VersionNumber,
-    nodeInfoIP :: Server,
-    nodeInfoHost :: Server,
+  { nodeInfoHTTPAddress      :: Maybe EsAddress,
+    nodeInfoBuild            :: BuildHash,
+    nodeInfoESVersion        :: VersionNumber,
+    nodeInfoIP               :: Server,
+    nodeInfoHost             :: Server,
     nodeInfoTransportAddress :: EsAddress,
-    nodeInfoName :: NodeName,
-    nodeInfoFullId :: FullNodeId,
-    nodeInfoPlugins :: [NodePluginInfo],
-    nodeInfoHTTP :: NodeHTTPInfo,
-    nodeInfoTransport :: NodeTransportInfo,
-    nodeInfoNetwork :: Maybe NodeNetworkInfo,
-    nodeInfoThreadPool :: Map Text NodeThreadPoolInfo,
-    nodeInfoJVM :: NodeJVMInfo,
-    nodeInfoProcess :: NodeProcessInfo,
-    nodeInfoOS :: NodeOSInfo,
+    nodeInfoName             :: NodeName,
+    nodeInfoFullId           :: FullNodeId,
+    nodeInfoPlugins          :: [NodePluginInfo],
+    nodeInfoHTTP             :: NodeHTTPInfo,
+    nodeInfoTransport        :: NodeTransportInfo,
+    nodeInfoNetwork          :: Maybe NodeNetworkInfo,
+    nodeInfoThreadPool       :: Map Text NodeThreadPoolInfo,
+    nodeInfoJVM              :: NodeJVMInfo,
+    nodeInfoProcess          :: NodeProcessInfo,
+    nodeInfoOS               :: NodeOSInfo,
     -- | The members of the settings objects are not consistent,
     -- dependent on plugins, etc.
-    nodeInfoSettings :: Object
+    nodeInfoSettings         :: Object
   }
   deriving (Eq, Show)
 
 data NodePluginInfo = NodePluginInfo
   { -- | Is this a site plugin?
-    nodePluginSite :: Maybe Bool,
+    nodePluginSite        :: Maybe Bool,
     -- | Is this plugin running on the JVM
-    nodePluginJVM :: Maybe Bool,
+    nodePluginJVM         :: Maybe Bool,
     nodePluginDescription :: Text,
-    nodePluginVersion :: MaybeNA VersionNumber,
-    nodePluginName :: PluginName
+    nodePluginVersion     :: MaybeNA VersionNumber,
+    nodePluginName        :: PluginName
   }
   deriving (Eq, Show)
 
 data NodeHTTPInfo = NodeHTTPInfo
   { nodeHTTPMaxContentLength :: Bytes,
-    nodeHTTPpublishAddress :: EsAddress,
-    nodeHTTPbound_address :: [EsAddress]
+    nodeHTTPpublishAddress   :: EsAddress,
+    nodeHTTPbound_address    :: [EsAddress]
   }
   deriving (Eq, Show)
 
 data NodeTransportInfo = NodeTransportInfo
-  { nodeTransportProfiles :: [BoundTransportAddress],
+  { nodeTransportProfiles       :: [BoundTransportAddress],
     nodeTransportPublishAddress :: EsAddress,
-    nodeTransportBoundAddress :: [EsAddress]
+    nodeTransportBoundAddress   :: [EsAddress]
   }
   deriving (Eq, Show)
 
 data BoundTransportAddress = BoundTransportAddress
   { publishAddress :: EsAddress,
-    boundAddress :: [EsAddress]
+    boundAddress   :: [EsAddress]
   }
   deriving (Eq, Show)
 
 data NodeNetworkInfo = NodeNetworkInfo
   { nodeNetworkPrimaryInterface :: NodeNetworkInterface,
-    nodeNetworkRefreshInterval :: NominalDiffTime
+    nodeNetworkRefreshInterval  :: NominalDiffTime
   }
   deriving (Eq, Show)
 
@@ -1365,8 +1369,8 @@ newtype NetworkInterfaceName = NetworkInterfaceName {networkInterfaceName :: Tex
 
 data NodeNetworkInterface = NodeNetworkInterface
   { nodeNetIfaceMacAddress :: MacAddress,
-    nodeNetIfaceName :: NetworkInterfaceName,
-    nodeNetIfaceAddress :: Server
+    nodeNetIfaceName       :: NetworkInterfaceName,
+    nodeNetIfaceAddress    :: Server
   }
   deriving (Eq, Show)
 
@@ -1379,9 +1383,9 @@ data ThreadPool = ThreadPool
 data NodeThreadPoolInfo = NodeThreadPoolInfo
   { nodeThreadPoolQueueSize :: ThreadPoolSize,
     nodeThreadPoolKeepalive :: Maybe NominalDiffTime,
-    nodeThreadPoolMin :: Maybe Int,
-    nodeThreadPoolMax :: Maybe Int,
-    nodeThreadPoolType :: ThreadPoolType
+    nodeThreadPoolMin       :: Maybe Int,
+    nodeThreadPoolMax       :: Maybe Int,
+    nodeThreadPoolType      :: ThreadPoolType
   }
   deriving (Eq, Show)
 
@@ -1398,16 +1402,16 @@ data ThreadPoolType
   deriving (Eq, Show)
 
 data NodeJVMInfo = NodeJVMInfo
-  { nodeJVMInfoMemoryPools :: [JVMMemoryPool],
+  { nodeJVMInfoMemoryPools             :: [JVMMemoryPool],
     nodeJVMInfoMemoryPoolsGCCollectors :: [JVMGCCollector],
-    nodeJVMInfoMemoryInfo :: JVMMemoryInfo,
-    nodeJVMInfoStartTime :: UTCTime,
-    nodeJVMInfoVMVendor :: Text,
+    nodeJVMInfoMemoryInfo              :: JVMMemoryInfo,
+    nodeJVMInfoStartTime               :: UTCTime,
+    nodeJVMInfoVMVendor                :: Text,
     -- | JVM doesn't seme to follow normal version conventions
-    nodeJVMVMVersion :: VMVersion,
-    nodeJVMVMName :: Text,
-    nodeJVMVersion :: JVMVersion,
-    nodeJVMPID :: PID
+    nodeJVMVMVersion                   :: VMVersion,
+    nodeJVMVMName                      :: Text,
+    nodeJVMVersion                     :: JVMVersion,
+    nodeJVMPID                         :: PID
   }
   deriving (Eq, Show)
 
@@ -1419,11 +1423,11 @@ instance FromJSON JVMVersion where
   parseJSON = withText "JVMVersion" (pure . JVMVersion)
 
 data JVMMemoryInfo = JVMMemoryInfo
-  { jvmMemoryInfoDirectMax :: Bytes,
-    jvmMemoryInfoNonHeapMax :: Bytes,
+  { jvmMemoryInfoDirectMax   :: Bytes,
+    jvmMemoryInfoNonHeapMax  :: Bytes,
     jvmMemoryInfoNonHeapInit :: Bytes,
-    jvmMemoryInfoHeapMax :: Bytes,
-    jvmMemoryInfoHeapInit :: Bytes
+    jvmMemoryInfoHeapMax     :: Bytes,
+    jvmMemoryInfoHeapInit    :: Bytes
   }
   deriving (Eq, Show)
 
@@ -1454,40 +1458,40 @@ newtype PID = PID
   deriving (Eq, Show, FromJSON)
 
 data NodeOSInfo = NodeOSInfo
-  { nodeOSRefreshInterval :: NominalDiffTime,
-    nodeOSName :: Text,
-    nodeOSArch :: Text,
-    nodeOSVersion :: Text, -- semver breaks on "5.10.60.1-microsoft-standard-WSL2"
+  { nodeOSRefreshInterval     :: NominalDiffTime,
+    nodeOSName                :: Text,
+    nodeOSArch                :: Text,
+    nodeOSVersion             :: Text, -- semver breaks on "5.10.60.1-microsoft-standard-WSL2"
     nodeOSAvailableProcessors :: Int,
     nodeOSAllocatedProcessors :: Int
   }
   deriving (Eq, Show)
 
 data CPUInfo = CPUInfo
-  { cpuCacheSize :: Bytes,
+  { cpuCacheSize      :: Bytes,
     cpuCoresPerSocket :: Int,
-    cpuTotalSockets :: Int,
-    cpuTotalCores :: Int,
-    cpuMHZ :: Int,
-    cpuModel :: Text,
-    cpuVendor :: Text
+    cpuTotalSockets   :: Int,
+    cpuTotalCores     :: Int,
+    cpuMHZ            :: Int,
+    cpuModel          :: Text,
+    cpuVendor         :: Text
   }
   deriving (Eq, Show)
 
 data NodeProcessInfo = NodeProcessInfo
   { -- | See <https://www.elastic.co/guide/en/elasticsearch/reference/current/setup-configuration.html>
-    nodeProcessMLockAll :: Bool,
+    nodeProcessMLockAll           :: Bool,
     nodeProcessMaxFileDescriptors :: Maybe Int,
-    nodeProcessId :: PID,
-    nodeProcessRefreshInterval :: NominalDiffTime
+    nodeProcessId                 :: PID,
+    nodeProcessRefreshInterval    :: NominalDiffTime
   }
   deriving (Eq, Show)
 
 data ShardResult = ShardResult
-  { shardTotal :: Int,
+  { shardTotal       :: Int,
     shardsSuccessful :: Int,
-    shardsSkipped :: Int,
-    shardsFailed :: Int
+    shardsSkipped    :: Int,
+    shardsFailed     :: Int
   }
   deriving (Eq, Show)
 
@@ -1513,14 +1517,14 @@ data SnapshotState
 instance FromJSON SnapshotState where
   parseJSON = withText "SnapshotState" parse
     where
-      parse "INIT" = return SnapshotInit
+      parse "INIT"    = return SnapshotInit
       parse "STARTED" = return SnapshotStarted
       parse "SUCCESS" = return SnapshotSuccess
-      parse "FAILED" = return SnapshotFailed
+      parse "FAILED"  = return SnapshotFailed
       parse "ABORTED" = return SnapshotAborted
       parse "MISSING" = return SnapshotMissing
       parse "WAITING" = return SnapshotWaiting
-      parse t = fail ("Invalid snapshot state " <> T.unpack t)
+      parse t         = fail ("Invalid snapshot state " <> T.unpack t)
 
 data SnapshotRestoreSettings = SnapshotRestoreSettings
   { -- | Should the API call return immediately after initializing
@@ -1528,27 +1532,27 @@ data SnapshotRestoreSettings = SnapshotRestoreSettings
     -- enabled, it could wait a long time, so you should adjust your
     -- 'ManagerSettings' accordingly to set long timeouts or
     -- explicitly handle timeouts.
-    snapRestoreWaitForCompletion :: Bool,
+    snapRestoreWaitForCompletion      :: Bool,
     -- | Nothing will restore all indices in the snapshot. Just [] is
     -- permissable and will essentially be a no-op restore.
-    snapRestoreIndices :: Maybe IndexSelection,
+    snapRestoreIndices                :: Maybe IndexSelection,
     -- | If set to True, any indices that do not exist will be ignored
     -- during snapshot rather than failing the restore.
-    snapRestoreIgnoreUnavailable :: Bool,
+    snapRestoreIgnoreUnavailable      :: Bool,
     -- | If set to false, will ignore any global state in the snapshot
     -- and will not restore it.
-    snapRestoreIncludeGlobalState :: Bool,
+    snapRestoreIncludeGlobalState     :: Bool,
     -- | A regex pattern for matching indices. Used with
     -- 'snapRestoreRenameReplacement', the restore can reference the
     -- matched index and create a new index name upon restore.
-    snapRestoreRenamePattern :: Maybe RestoreRenamePattern,
+    snapRestoreRenamePattern          :: Maybe RestoreRenamePattern,
     -- | Expression of how index renames should be constructed.
-    snapRestoreRenameReplacement :: Maybe (NonEmpty RestoreRenameToken),
+    snapRestoreRenameReplacement      :: Maybe (NonEmpty RestoreRenameToken),
     -- | If some indices fail to restore, should the process proceed?
-    snapRestorePartial :: Bool,
+    snapRestorePartial                :: Bool,
     -- | Should the restore also restore the aliases captured in the
     -- snapshot.
-    snapRestoreIncludeAliases :: Bool,
+    snapRestoreIncludeAliases         :: Bool,
     -- | Settings to apply during the restore process. __NOTE:__ This
     -- option is not supported in ES < 1.5 and should be set to
     -- Nothing in that case.
@@ -1559,7 +1563,7 @@ data SnapshotRestoreSettings = SnapshotRestoreSettings
     -- omitting it. One example here would be
     -- "index.refresh_interval". Any setting specified here will
     -- revert back to the server default during the restore process.
-    snapRestoreIgnoreIndexSettings :: Maybe (NonEmpty Text)
+    snapRestoreIgnoreIndexSettings    :: Maybe (NonEmpty Text)
   }
   deriving (Eq, Show)
 
@@ -1582,13 +1586,13 @@ defaultSnapshotRepoUpdateSettings = SnapshotRepoUpdateSettings True
 -- Elasticsearch. This is an instance of 'SnapshotRepo' so it can be
 -- used with 'updateSnapshotRepo'
 data FsSnapshotRepo = FsSnapshotRepo
-  { fsrName :: SnapshotRepoName,
-    fsrLocation :: FilePath,
-    fsrCompressMetadata :: Bool,
+  { fsrName                   :: SnapshotRepoName,
+    fsrLocation               :: FilePath,
+    fsrCompressMetadata       :: Bool,
     -- | Size by which to split large files during snapshotting.
-    fsrChunkSize :: Maybe Bytes,
+    fsrChunkSize              :: Maybe Bytes,
     -- | Throttle node restore rate. If not supplied, defaults to 40mb/sec
-    fsrMaxRestoreBytesPerSec :: Maybe Bytes,
+    fsrMaxRestoreBytesPerSec  :: Maybe Bytes,
     -- | Throttle node snapshot rate. If not supplied, defaults to 40mb/sec
     fsrMaxSnapshotBytesPerSec :: Maybe Bytes
   }
@@ -1598,12 +1602,14 @@ instance SnapshotRepo FsSnapshotRepo where
   toGSnapshotRepo FsSnapshotRepo {..} =
     GenericSnapshotRepo fsrName fsRepoType (GenericSnapshotRepoSettings settings)
     where
-      Object settings =
-        object $
-          [ "location" .= fsrLocation,
-            "compress" .= fsrCompressMetadata
-          ]
-            ++ optionalPairs
+      o = object $
+            [ "location" .= fsrLocation,
+              "compress" .= fsrCompressMetadata
+            ]
+            <> optionalPairs
+      settings = case o of
+        Object o' -> o'
+        _         -> error "shouldNotHappen : SnapshotRepo"
       optionalPairs =
         catMaybes
           [ ("chunk_size" .=) <$> fsrChunkSize,
@@ -1624,7 +1630,7 @@ instance SnapshotRepo FsSnapshotRepo where
 
 parseRepo :: Parser a -> Either SnapshotRepoConversionError a
 parseRepo parser = case parseEither (const parser) () of
-  Left e -> Left (OtherRepoConversionError (T.pack e))
+  Left e  -> Left (OtherRepoConversionError (T.pack e))
   Right a -> Right a
 
 fsRepoType :: SnapshotRepoType
@@ -1649,17 +1655,17 @@ data SnapshotCreateSettings = SnapshotCreateSettings
     -- enabled it could wait a long time, so you should adjust your
     -- 'ManagerSettings' accordingly to set long timeouts or
     -- explicitly handle timeouts.
-    snapWaitForCompletion :: Bool,
+    snapWaitForCompletion  :: Bool,
     -- | Nothing will snapshot all indices. Just [] is permissable and
     -- will essentially be a no-op snapshot.
-    snapIndices :: Maybe IndexSelection,
+    snapIndices            :: Maybe IndexSelection,
     -- | If set to True, any matched indices that don't exist will be
     -- ignored. Otherwise it will be an error and fail.
-    snapIgnoreUnavailable :: Bool,
+    snapIgnoreUnavailable  :: Bool,
     snapIncludeGlobalState :: Bool,
     -- | If some indices failed to snapshot (e.g. if not all primary
     -- shards are available), should the process proceed?
-    snapPartial :: Bool
+    snapPartial            :: Bool
   }
   deriving (Eq, Show)
 
@@ -1696,14 +1702,14 @@ data SnapshotPattern
 -- | General information about the state of a snapshot. Has some
 -- redundancies with 'SnapshotStatus'
 data SnapshotInfo = SnapshotInfo
-  { snapInfoShards :: ShardResult,
-    snapInfoFailures :: [SnapshotShardFailure],
-    snapInfoDuration :: NominalDiffTime,
-    snapInfoEndTime :: UTCTime,
+  { snapInfoShards    :: ShardResult,
+    snapInfoFailures  :: [SnapshotShardFailure],
+    snapInfoDuration  :: NominalDiffTime,
+    snapInfoEndTime   :: UTCTime,
     snapInfoStartTime :: UTCTime,
-    snapInfoState :: SnapshotState,
-    snapInfoIndices :: [IndexName],
-    snapInfoName :: SnapshotName
+    snapInfoState     :: SnapshotState,
+    snapInfoIndices   :: [IndexName],
+    snapInfoName      :: SnapshotName
   }
   deriving (Eq, Show)
 
@@ -1722,9 +1728,9 @@ instance FromJSON SnapshotInfo where
           <*> o .: "snapshot"
 
 data SnapshotShardFailure = SnapshotShardFailure
-  { snapShardFailureIndex :: IndexName,
-    snapShardFailureNodeId :: Maybe NodeName, -- I'm not 100% sure this isn't actually 'FullNodeId'
-    snapShardFailureReason :: Text,
+  { snapShardFailureIndex   :: IndexName,
+    snapShardFailureNodeId  :: Maybe NodeName, -- I'm not 100% sure this isn't actually 'FullNodeId'
+    snapShardFailureReason  :: Text,
     snapShardFailureShardId :: ShardId
   }
   deriving (Eq, Show)
@@ -1957,8 +1963,7 @@ instance FromJSON NodeJVMStats where
         oldM <- pools .: "old"
         survivorM <- pools .: "survivor"
         youngM <- pools .: "young"
-        NodeJVMStats
-          <$> pure mapped
+        pure (NodeJVMStats mapped)
           <*> pure direct
           <*> pure oldC
           <*> pure youngC
@@ -2054,7 +2059,7 @@ instance FromJSON NodeIndicesStats where
     where
       parse o = do
         let (.::) mv k = case mv of
-              Just v -> Just <$> v .: k
+              Just v  -> Just <$> v .: k
               Nothing -> pure Nothing
         mRecovery <- o .:? "recovery"
         mQueryCache <- o .:? "query_cache"
@@ -2349,9 +2354,9 @@ data TimeInterval
   deriving (Eq)
 
 instance Show TimeInterval where
-  show Weeks = "w"
-  show Days = "d"
-  show Hours = "h"
+  show Weeks   = "w"
+  show Days    = "d"
+  show Hours   = "h"
   show Minutes = "m"
   show Seconds = "s"
 
@@ -2363,7 +2368,7 @@ instance Read TimeInterval where
       f 'h' = return Hours
       f 'm' = return Minutes
       f 's' = return Seconds
-      f _ = fail "TimeInterval expected one of w, d, h, m, s"
+      f _   = fail "TimeInterval expected one of w, d, h, m, s"
 
 data Interval
   = Year
@@ -2377,28 +2382,28 @@ data Interval
   deriving (Eq, Show)
 
 instance ToJSON Interval where
-  toJSON Year = "year"
+  toJSON Year    = "year"
   toJSON Quarter = "quarter"
-  toJSON Month = "month"
-  toJSON Week = "week"
-  toJSON Day = "day"
-  toJSON Hour = "hour"
-  toJSON Minute = "minute"
-  toJSON Second = "second"
+  toJSON Month   = "month"
+  toJSON Week    = "week"
+  toJSON Day     = "day"
+  toJSON Hour    = "hour"
+  toJSON Minute  = "minute"
+  toJSON Second  = "second"
 
 parseStringInterval :: (Monad m, MonadFail m) => String -> m NominalDiffTime
 parseStringInterval s = case span isNumber s of
   ("", _) -> fail "Invalid interval"
   (nS, unitS) -> case (readMay nS, readMay unitS) of
     (Just n, Just unit) -> return (fromInteger (n * unitNDT unit))
-    (Nothing, _) -> fail "Invalid interval number"
-    (_, Nothing) -> fail "Invalid interval unit"
+    (Nothing, _)        -> fail "Invalid interval number"
+    (_, Nothing)        -> fail "Invalid interval unit"
   where
     unitNDT Seconds = 1
     unitNDT Minutes = 60
-    unitNDT Hours = 60 * 60
-    unitNDT Days = 24 * 60 * 60
-    unitNDT Weeks = 7 * 24 * 60 * 60
+    unitNDT Hours   = 60 * 60
+    unitNDT Days    = 24 * 60 * 60
+    unitNDT Weeks   = 7 * 24 * 60 * 60
 
 instance FromJSON ThreadPoolSize where
   parseJSON v = parseAsNumber v <|> parseAsString v
@@ -2411,8 +2416,8 @@ instance FromJSON ThreadPoolSize where
       parseAsString = withText "ThreadPoolSize" $ \t ->
         case first (readMay . T.unpack) (T.span isNumber t) of
           (Just n, "k") -> return (ThreadPoolBounded (n * 1000))
-          (Just n, "") -> return (ThreadPoolBounded n)
-          _ -> fail ("Invalid thread pool size " <> T.unpack t)
+          (Just n, "")  -> return (ThreadPoolBounded n)
+          _             -> fail ("Invalid thread pool size " <> T.unpack t)
 
 instance FromJSON ThreadPoolType where
   parseJSON = withText "ThreadPoolType" parse
@@ -2483,4 +2488,4 @@ instance FromJSON VersionNumber where
       parse t =
         case SemVer.fromText t of
           (Left err) -> fail err
-          (Right v) -> return (VersionNumber v)
+          (Right v)  -> return (VersionNumber v)

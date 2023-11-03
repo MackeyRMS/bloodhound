@@ -154,6 +154,7 @@ spec = do
                       ("ex_pattern_replace", CharFilterDefinitionPatternReplace "(\\d+)-(?=\\d)" "$1_" Nothing)
                     ]
                 )
+                (M.fromList [])
             updates = [AnalysisSetting analysis]
         createResp <- createIndexWith (updates ++ [NumberOfReplicas (ReplicaCount 0)]) 1 testIndex
         liftIO $ validateStatus createResp 200

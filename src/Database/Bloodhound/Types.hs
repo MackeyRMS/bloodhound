@@ -452,7 +452,6 @@ import           Database.Bloodhound.Internal.PointInTime
 import           Database.Bloodhound.Internal.Query
 import           Database.Bloodhound.Internal.Sort
 import           Database.Bloodhound.Internal.Source
-import           Database.Bloodhound.Internal.Suggest
 
 -- | 'unpackId' is a silly convenience function that gets used once.
 unpackId :: DocId -> Text
@@ -537,8 +536,8 @@ instance ToJSON SearchType where
   toJSON SearchTypeDfsQueryThenFetch = String "dfs_query_then_fetch"
 
 instance FromJSON SearchType where
-  parseJSON (String "query_then_fetch")     = pure $ SearchTypeQueryThenFetch
-  parseJSON (String "dfs_query_then_fetch") = pure $ SearchTypeDfsQueryThenFetch
+  parseJSON (String "query_then_fetch")     = pure SearchTypeQueryThenFetch
+  parseJSON (String "dfs_query_then_fetch") = pure SearchTypeDfsQueryThenFetch
   parseJSON _                               = empty
 
 
@@ -601,10 +600,10 @@ instance ToJSON ExpandWildcards where
   toJSON ExpandWildcardsNone   = String "none"
 
 instance FromJSON ExpandWildcards where
-  parseJSON (String "all")    = pure $ ExpandWildcardsAll
-  parseJSON (String "open")   = pure $ ExpandWildcardsOpen
-  parseJSON (String "closed") = pure $ ExpandWildcardsClosed
-  parseJSON (String "none")   = pure $ ExpandWildcardsNone
+  parseJSON (String "all")    = pure ExpandWildcardsAll
+  parseJSON (String "open")   = pure ExpandWildcardsOpen
+  parseJSON (String "closed") = pure ExpandWildcardsClosed
+  parseJSON (String "none")   = pure ExpandWildcardsNone
   parseJSON _                 = empty
 
 data TimeUnits
