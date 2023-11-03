@@ -290,7 +290,7 @@ instance ToJSON WildcardQuery where
   toJSON
     ( WildcardQuery
         (FieldName wcQueryField)
-        (wcQueryQuery)
+        wcQueryQuery
         wcQueryBoost
       ) =
       object [fromText wcQueryField .= omitNulls base]
@@ -1864,7 +1864,9 @@ instance ToJSON Distance where
     String boltedTogether
     where
       coefText = showText dCoefficient
-      (String unitText) = toJSON dUnit
+      unitText = case toJSON dUnit of
+        String s -> s
+        _        -> error "ToJSON Distance dunit"
       boltedTogether = mappend coefText unitText
 
 instance FromJSON Distance where
@@ -2073,7 +2075,7 @@ data Highlights = Highlights
   { globalsettings  :: Maybe HighlightSettings,
     highlightFields :: [FieldHighlight]
   }
-  deriving (Eq, Show)
+  deriving (Eq, Show, Generic)
 
 instance ToJSON Highlights where
   toJSON (Highlights global fields) =
@@ -2084,7 +2086,7 @@ instance ToJSON Highlights where
 
 data FieldHighlight
   = FieldHighlight FieldName (Maybe HighlightSettings)
-  deriving (Eq, Show)
+  deriving (Eq, Show, Generic)
 
 instance ToJSON FieldHighlight where
   toJSON (FieldHighlight (FieldName fName) (Just fSettings)) =
@@ -2096,7 +2098,7 @@ data HighlightSettings
   = Plain PlainHighlight
   | Postings PostingsHighlight
   | FastVector FastVectorHighlight
-  deriving (Eq, Show)
+  deriving (Eq, Show, Generic)
 
 instance ToJSON HighlightSettings where
   toJSON hs = omitNulls (highlightSettingsPairs (Just hs))
@@ -2105,12 +2107,12 @@ data PlainHighlight = PlainHighlight
   { plainCommon  :: Maybe CommonHighlight,
     plainNonPost :: Maybe NonPostings
   }
-  deriving (Eq, Show)
+  deriving (Eq, Show, Generic)
 
 -- This requires that index_options are set to 'offset' in the mapping.
-data PostingsHighlight
+newtype PostingsHighlight
   = PostingsHighlight (Maybe CommonHighlight)
-  deriving (Eq, Show)
+  deriving (Eq, Show, Generic)
 
 -- This requires that term_vector is set to 'with_positions_offsets' in the mapping.
 data FastVectorHighlight = FastVectorHighlight
@@ -2122,7 +2124,7 @@ data FastVectorHighlight = FastVectorHighlight
     matchedFields     :: [Text],
     phraseLimit       :: Maybe Int
   }
-  deriving (Eq, Show)
+  deriving (Eq, Show, Generic)
 
 data CommonHighlight = CommonHighlight
   { order             :: Maybe Text,
@@ -2133,19 +2135,19 @@ data CommonHighlight = CommonHighlight
     highlightQuery    :: Maybe Query,
     requireFieldMatch :: Maybe Bool
   }
-  deriving (Eq, Show)
+  deriving (Eq, Show, Generic)
 
 -- Settings that are only applicable to FastVector and Plain highlighters.
 data NonPostings = NonPostings
   { fragmentSize      :: Maybe Int,
     numberOfFragments :: Maybe Int
   }
-  deriving (Eq, Show)
+  deriving (Eq, Show, Generic)
 
 data HighlightEncoder
   = DefaultEncoder
   | HTMLEncoder
-  deriving (Eq, Show)
+  deriving (Eq, Show, Generic)
 
 instance ToJSON HighlightEncoder where
   toJSON DefaultEncoder = String "default"
@@ -2156,7 +2158,7 @@ data HighlightTag
   = TagSchema Text
   | -- Only uses more than the first value in the lists if fvh
     CustomTags ([Text], [Text])
-  deriving (Eq, Show)
+  deriving (Eq, Show, Generic)
 
 highlightSettingsPairs :: Maybe HighlightSettings -> [Pair]
 highlightSettingsPairs Nothing                 = []
@@ -2273,7 +2275,7 @@ instance FromJSON Suggest where
     return $ Suggest suggestText' (toText suggestName') suggestType'
   parseJSON x = typeMismatch "Suggest" x
 
-data SuggestType
+newtype SuggestType
   = SuggestTypePhraseSuggester PhraseSuggester
   deriving (Eq, Show, Generic)
 
@@ -2412,7 +2414,7 @@ data SuggestOptions = SuggestOptions
     suggestOptionsFreq        :: Maybe Int,
     suggestOptionsHighlighted :: Maybe Text
   }
-  deriving (Eq, Read, Show)
+  deriving (Eq, Read, Show, Generic)
 
 instance FromJSON SuggestOptions where
   parseJSON = withObject "SuggestOptions" parse

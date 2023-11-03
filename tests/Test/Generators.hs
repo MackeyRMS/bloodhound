@@ -502,6 +502,8 @@ instance Arbitrary CharFilterDefinition where
         M.map T.strip
           . M.mapKeys (T.replace "=>" "" . T.strip)
 
+instance Arbitrary NormalizerDefinition where arbitrary = genericArbitraryU
+
 instance Arbitrary Analysis where arbitrary = genericArbitraryU
 
 instance Arbitrary Tokenizer where arbitrary = genericArbitraryU
@@ -594,4 +596,34 @@ instance Arbitrary UpdatableIndexSetting' where
         nodeAttrFilterName a == nodeAttrFilterName b
   shrink (UpdatableIndexSetting' x) = map UpdatableIndexSetting' (shrink x)
 
+instance Arbitrary PatternOrPatterns where arbitrary = genericArbitraryU
+
+instance Arbitrary HighlightSettings where arbitrary = genericArbitraryU
+
+instance Arbitrary FieldHighlight where arbitrary = genericArbitraryU
+
+instance Arbitrary PlainHighlight where arbitrary = genericArbitraryU
+
+instance Arbitrary PostingsHighlight where arbitrary = genericArbitraryU
+
+instance Arbitrary FastVectorHighlight where arbitrary = genericArbitraryU
+
+instance Arbitrary CommonHighlight where arbitrary = genericArbitraryU
+
+instance Arbitrary HighlightTag where arbitrary = genericArbitraryU
+
+instance Arbitrary HighlightEncoder where arbitrary = genericArbitraryU
+
+instance Arbitrary NonPostings where arbitrary = genericArbitraryU
+
+instance Arbitrary Include where arbitrary = genericArbitraryU
+
+instance Arbitrary Exclude where arbitrary = genericArbitraryU
+
+instance Arbitrary Highlights where arbitrary = genericArbitraryU
+
+instance Arbitrary Source where arbitrary = genericArbitraryU
+
 instance Arbitrary InnerHits where arbitrary = genericArbitraryU
+
+instance Arbitrary Pattern where arbitrary = genericArbitraryU
