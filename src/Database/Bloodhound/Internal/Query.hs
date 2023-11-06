@@ -1,5 +1,6 @@
 {-# LANGUAGE DeriveGeneric              #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE NamedFieldPuns             #-}
 {-# LANGUAGE OverloadedStrings          #-}
 {-# LANGUAGE RecordWildCards            #-}
 
@@ -50,6 +51,7 @@ data Query
   | QueryExistsQuery FieldName
   | QueryMatchNoneQuery
   | QueryWildcardQuery WildcardQuery
+  | QueryKnnQuery KnnQuery
   deriving (Eq, Show, Generic)
 
 instance ToJSON Query where
@@ -134,6 +136,8 @@ instance ToJSON Query where
     object ["match_none" .= object []]
   toJSON (QueryWildcardQuery query) =
     object ["wildcard" .= query]
+  toJSON (QueryKnnQuery query) =
+    object ["knn" .= query]
 
 instance FromJSON Query where
   parseJSON v = withObject "Query" parse v
@@ -307,6 +311,26 @@ instance FromJSON WildcardQuery where
         WildcardQuery fn
           <$> o .: "value"
           <*> o .:? "boost"
+
+data KnnQuery = KnnQuery
+  { knnQueryK         :: Int
+  , knnQueryFieldName :: FieldName
+  , knnQueryVector    :: [Double]
+  , knnQueryFilter    :: Maybe Filter
+  }
+  deriving (Eq, Show, Generic)
+
+instance ToJSON KnnQuery where
+  toJSON KnnQuery{knnQueryK, knnQueryFieldName, knnQueryVector, knnQueryFilter} =
+    object
+      [ fromText fn .= object
+        [ "k" .= knnQueryK
+        , "filter" .= knnQueryFilter
+        , "vector" .= knnQueryVector
+        ]
+      ]
+    where
+      FieldName fn = knnQueryFieldName
 
 data RangeQuery = RangeQuery
   { rangeQueryField :: FieldName,
