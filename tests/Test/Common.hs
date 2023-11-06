@@ -1,12 +1,12 @@
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE TemplateHaskell   #-}
 
 module Test.Common where
 
-import qualified Data.Map as M
-import qualified Data.SemVer as SemVer
+import qualified Data.Map                  as M
+import qualified Data.SemVer               as SemVer
 import qualified Network.HTTP.Types.Status as NHTS
-import Test.Import
+import           Test.Import
 
 testServer :: Server
 testServer = Server "http://localhost:9200"
@@ -24,12 +24,12 @@ data Location = Location
   deriving (Eq, Show)
 
 data Tweet = Tweet
-  { user :: Text,
+  { user     :: Text,
     postDate :: UTCTime,
-    message :: Text,
-    age :: Int,
+    message  :: Text,
+    age      :: Int,
     location :: Location,
-    extra :: Maybe Text
+    extra    :: Maybe Text
   }
   deriving (Eq, Show)
 
@@ -283,7 +283,7 @@ searchTweetHighlight search = do
   let tweetHit :: Either EsError (Maybe (Hit Tweet))
       tweetHit = fmap (headMay . hits . searchHits) result
       myHighlight :: Either EsError (Maybe HitHighlight)
-      myHighlight = (join . fmap hitHighlight) <$> tweetHit
+      myHighlight = (hitHighlight =<<) <$> tweetHit
   return myHighlight
 
 searchExpectSource :: Source -> Either EsError Value -> BH IO ()
