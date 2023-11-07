@@ -1,3 +1,4 @@
+{-# LANGUAGE DeriveGeneric              #-}
 {-# LANGUAGE FlexibleContexts           #-}
 {-# LANGUAGE FlexibleInstances          #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
@@ -453,6 +454,7 @@ import           Database.Bloodhound.Internal.PointInTime
 import           Database.Bloodhound.Internal.Query
 import           Database.Bloodhound.Internal.Sort
 import           Database.Bloodhound.Internal.Source
+import           GHC.Generics
 
 -- | 'unpackId' is a silly convenience function that gets used once.
 unpackId :: DocId -> Text
@@ -554,7 +556,10 @@ data SearchResult a = SearchResult
     suggest      :: Maybe NamedSuggestionResponse,
     pitId        :: Maybe Text
   }
-  deriving (Eq, Show)
+  deriving (Eq, Show, Generic)
+
+instance ToJSON a => ToJSON (SearchResult a) where
+  toJSON = genericToJSON defaultOptions
 
 instance (FromJSON a) => FromJSON (SearchResult a) where
   parseJSON (Object v) =

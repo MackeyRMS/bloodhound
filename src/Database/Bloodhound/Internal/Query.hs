@@ -2440,6 +2440,9 @@ data SuggestOptions = SuggestOptions
   }
   deriving (Eq, Read, Show, Generic)
 
+instance ToJSON SuggestOptions where
+  toJSON = genericToJSON defaultOptions
+
 instance FromJSON SuggestOptions where
   parseJSON = withObject "SuggestOptions" parse
     where
@@ -2456,7 +2459,10 @@ data SuggestResponse = SuggestResponse
     suggestResponseLength  :: Int,
     suggestResponseOptions :: [SuggestOptions]
   }
-  deriving (Eq, Read, Show)
+  deriving (Eq, Read, Show, Generic)
+
+instance ToJSON SuggestResponse where
+  toJSON = genericToJSON defaultOptions
 
 instance FromJSON SuggestResponse where
   parseJSON = withObject "SuggestResponse" parse
@@ -2472,7 +2478,10 @@ data NamedSuggestionResponse = NamedSuggestionResponse
   { nsrName      :: Text,
     nsrResponses :: [SuggestResponse]
   }
-  deriving (Eq, Read, Show)
+  deriving (Eq, Read, Show, Generic)
+
+instance ToJSON NamedSuggestionResponse where
+  toJSON = genericToJSON defaultOptions
 
 instance FromJSON NamedSuggestionResponse where
   parseJSON (Object o) = do

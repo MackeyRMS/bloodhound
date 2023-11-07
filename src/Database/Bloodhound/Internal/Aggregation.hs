@@ -1,3 +1,4 @@
+{-# LANGUAGE DeriveGeneric     #-}
 {-# LANGUAGE NamedFieldPuns    #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards   #-}
@@ -13,6 +14,7 @@ import           Database.Bloodhound.Internal.Client
 import           Database.Bloodhound.Internal.Newtypes
 import           Database.Bloodhound.Internal.Query
 import           Database.Bloodhound.Internal.Sort
+import           GHC.Generics
 
 type Aggregations = M.Map Key Aggregation
 
@@ -520,7 +522,10 @@ instance FromJSON MissingResult where
 newtype TopHitResult a = TopHitResult
   { tarHits :: SearchHits a
   }
-  deriving (Eq, Show)
+  deriving (Eq, Show, Generic)
+
+instance ToJSON a => ToJSON (TopHitResult a) where
+  toJSON = genericToJSON defaultOptions
 
 instance (FromJSON a) => FromJSON (TopHitResult a) where
   parseJSON (Object v) =
@@ -528,7 +533,9 @@ instance (FromJSON a) => FromJSON (TopHitResult a) where
       <$> v .: "hits"
   parseJSON _ = fail "Failure in FromJSON (TopHitResult a)"
 
-data HitsTotalRelation = HTR_EQ | HTR_GTE deriving (Eq, Show)
+data HitsTotalRelation = HTR_EQ | HTR_GTE deriving (Eq, Show, Generic)
+instance ToJSON HitsTotalRelation where
+  toJSON = genericToJSON defaultOptions
 
 instance FromJSON HitsTotalRelation where
   parseJSON (String "eq")  = pure HTR_EQ
@@ -539,7 +546,10 @@ data HitsTotal = HitsTotal
   { value    :: Int,
     relation :: HitsTotalRelation
   }
-  deriving (Eq, Show)
+  deriving (Eq, Show, Generic)
+
+instance ToJSON HitsTotal where
+  toJSON = genericToJSON defaultOptions
 
 instance FromJSON HitsTotal where
   parseJSON (Object v) =
@@ -558,7 +568,10 @@ data SearchHits a = SearchHits
     maxScore  :: Score,
     hits      :: [Hit a]
   }
-  deriving (Eq, Show)
+  deriving (Eq, Show, Generic)
+
+instance ToJSON a => ToJSON (SearchHits a) where
+  toJSON = genericToJSON defaultOptions
 
 instance (FromJSON a) => FromJSON (SearchHits a) where
   parseJSON (Object v) =
@@ -588,7 +601,11 @@ data Hit a = Hit
     hitHighlight :: Maybe HitHighlight,
     hitInnerHits :: Maybe (X.KeyMap (TopHitResult Value))
   }
-  deriving (Eq, Show)
+  deriving (Eq, Show, Generic)
+
+
+instance ToJSON a => ToJSON (Hit a) where
+  toJSON = genericToJSON defaultOptions
 
 instance (FromJSON a) => FromJSON (Hit a) where
   parseJSON (Object v) =
