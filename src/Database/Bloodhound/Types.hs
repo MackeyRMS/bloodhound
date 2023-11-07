@@ -215,6 +215,7 @@ module Database.Bloodhound.Types
     GetTemplateScript (..),
     TemplateQueryKeyValuePairs (..),
     WildcardQuery (..),
+    KnnQuery (..),
     BooleanOperator (..),
     ZeroTermsQuery (..),
     CutoffFrequency (..),
