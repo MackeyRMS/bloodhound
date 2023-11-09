@@ -323,7 +323,7 @@ data KnnQuery = KnnQuery
 instance ToJSON KnnQuery where
   toJSON KnnQuery{knnQueryK, knnQueryFieldName, knnQueryVector, knnQueryFilter} =
     object
-      [ fromText fn .= object
+      [ fromText fn .= omitNulls
         [ "k" .= knnQueryK
         , "filter" .= knnQueryFilter
         , "vector" .= knnQueryVector
