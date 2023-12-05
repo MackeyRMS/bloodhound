@@ -1,8 +1,8 @@
 {-# LANGUAGE DerivingStrategies #-}
-{-# LANGUAGE OverloadedLists #-}
-{-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE RecordWildCards #-}
-{-# LANGUAGE TupleSections #-}
+{-# LANGUAGE OverloadedLists    #-}
+{-# LANGUAGE OverloadedStrings  #-}
+{-# LANGUAGE RecordWildCards    #-}
+{-# LANGUAGE TupleSections      #-}
 
 -- |
 -- Module : Database.Bloodhound.Client
@@ -136,31 +136,33 @@ module Database.Bloodhound.Client
   )
 where
 
-import Control.Applicative as A
-import Control.Monad
-import Control.Monad.Catch
-import Control.Monad.IO.Class
-import Data.Aeson
-import Data.Aeson.Key
-import qualified Data.Aeson.KeyMap as X
-import Data.ByteString.Builder
-import qualified Data.ByteString.Lazy.Char8 as L
-import Data.Foldable (toList)
-import qualified Data.List as LS (foldl')
-import Data.List.NonEmpty (NonEmpty (..))
-import Data.Maybe (catMaybes, fromMaybe)
-import Data.Monoid
-import Data.Text (Text)
-import qualified Data.Text as T
-import qualified Data.Text.Encoding as T
-import Data.Time.Clock
-import qualified Data.Vector as V
-import Database.Bloodhound.Internal.Client.BHRequest
-import Database.Bloodhound.Types
-import Network.HTTP.Client
-import qualified Network.HTTP.Types.Method as NHTM
-import qualified Network.URI as URI
-import Prelude hiding (filter, head)
+import           Control.Applicative                           as A
+import           Control.Monad
+import           Control.Monad.Catch
+import           Control.Monad.IO.Class
+import           Data.Aeson
+import           Data.Aeson.Key
+import qualified Data.Aeson.KeyMap                             as X
+import           Data.ByteString.Builder
+import qualified Data.ByteString.Lazy.Char8                    as L
+import           Data.Foldable                                 (toList)
+import qualified Data.List                                     as LS (foldl')
+import           Data.List.NonEmpty                            (NonEmpty (..))
+import           Data.Maybe                                    (catMaybes,
+                                                                fromMaybe)
+import           Data.Monoid
+import           Data.Text                                     (Text)
+import qualified Data.Text                                     as T
+import qualified Data.Text.Encoding                            as T
+import           Data.Time.Clock
+import qualified Data.Vector                                   as V
+import           Database.Bloodhound.Internal.Client.BHRequest
+import           Database.Bloodhound.Types
+import           Network.HTTP.Client
+import qualified Network.HTTP.Types.Method                     as NHTM
+import qualified Network.URI                                   as URI
+import           Prelude                                       hiding (filter,
+                                                                head)
 
 -- $setup
 -- >>> :set -XOverloadedStrings
@@ -314,9 +316,9 @@ getSnapshotRepos sel =
   fmap (fmap unGSRs) . parseEsResponse =<< get ["_snapshot", selectorSeg]
   where
     selectorSeg = case sel of
-      AllSnapshotRepos -> "_all"
+      AllSnapshotRepos           -> "_all"
       SnapshotRepoList (p :| ps) -> T.intercalate "," (renderPat <$> (p : ps))
-    renderPat (RepoPattern t) = t
+    renderPat (RepoPattern t)                  = t
     renderPat (ExactRepo (SnapshotRepoName t)) = t
 
 -- | Wrapper to extract the list of 'GenericSnapshotRepo' in the
@@ -410,9 +412,9 @@ getSnapshots (SnapshotRepoName repoName) sel =
   fmap (fmap unSIs) . parseEsResponse =<< get ["_snapshot", repoName, snapPath]
   where
     snapPath = case sel of
-      AllSnapshots -> "_all"
+      AllSnapshots           -> "_all"
       SnapshotList (s :| ss) -> T.intercalate "," (renderPath <$> (s : ss))
-    renderPath (SnapPattern t) = t
+    renderPath (SnapPattern t)              = t
     renderPath (ExactSnap (SnapshotName t)) = t
 
 newtype SIs = SIs {unSIs :: [SnapshotInfo]}
@@ -456,9 +458,9 @@ restoreSnapshot (SnapshotRepoName repoName) (SnapshotName snapName) SnapshotRest
             ("ignore_index_settings" .=) <$> snapRestoreIgnoreIndexSettings
           ]
     renderTokens (t :| ts) = mconcat (renderToken <$> (t : ts))
-    renderToken (RRTLit t) = t
+    renderToken (RRTLit t)      = t
     renderToken RRSubWholeMatch = "$0"
-    renderToken (RRSubGroup g) = T.pack (show (rrGroupRefNum g))
+    renderToken (RRSubGroup g)  = T.pack (show (rrGroupRefNum g))
 
 getNodesInfo ::
   ( MonadBH m,
@@ -470,12 +472,12 @@ getNodesInfo sel =
   parseEsResponse =<< get ["_nodes", selectionSeg]
   where
     selectionSeg = case sel of
-      LocalNode -> "_local"
+      LocalNode          -> "_local"
       NodeList (l :| ls) -> T.intercalate "," (selToSeg <$> (l : ls))
-      AllNodes -> "_all"
-    selToSeg (NodeByName (NodeName n)) = n
-    selToSeg (NodeByFullNodeId (FullNodeId i)) = i
-    selToSeg (NodeByHost (Server s)) = s
+      AllNodes           -> "_all"
+    selToSeg (NodeByName (NodeName n))            = n
+    selToSeg (NodeByFullNodeId (FullNodeId i))    = i
+    selToSeg (NodeByHost (Server s))              = s
     selToSeg (NodeByAttribute (NodeAttrName a) v) = a <> ":" <> v
 
 getNodesStats ::
@@ -488,12 +490,12 @@ getNodesStats sel =
   parseEsResponse =<< get ["_nodes", selectionSeg, "stats"]
   where
     selectionSeg = case sel of
-      LocalNode -> "_local"
+      LocalNode          -> "_local"
       NodeList (l :| ls) -> T.intercalate "," (selToSeg <$> (l : ls))
-      AllNodes -> "_all"
-    selToSeg (NodeByName (NodeName n)) = n
-    selToSeg (NodeByFullNodeId (FullNodeId i)) = i
-    selToSeg (NodeByHost (Server s)) = s
+      AllNodes           -> "_all"
+    selToSeg (NodeByName (NodeName n))            = n
+    selToSeg (NodeByFullNodeId (FullNodeId i))    = i
+    selToSeg (NodeByHost (Server s))              = s
     selToSeg (NodeByAttribute (NodeAttrName a) v) = a <> ":" <> v
 
 -- | 'createIndex' will create an index given a 'Server', 'IndexSettings', and an 'IndexName'.
@@ -614,7 +616,7 @@ deepMerge :: [Object] -> Object
 deepMerge = LS.foldl' (X.unionWith merge) mempty
   where
     merge (Object a) (Object b) = Object (deepMerge [a, b])
-    merge _ b = b
+    merge _ b                   = b
 
 doesExist :: MonadBH m => Endpoint -> m Bool
 doesExist endpoint =
@@ -648,19 +650,19 @@ waitForYellowIndex (IndexName indexName) =
     params = [("wait_for_status", Just "yellow"), ("timeout", Just "10s")]
 
 data HealthStatus = HealthStatus
-  { healthStatusClusterName :: Text,
-    healthStatusStatus :: Text,
-    healthStatusTimedOut :: Bool,
-    healthStatusNumberOfNodes :: Int,
-    healthStatusNumberOfDataNodes :: Int,
-    healthStatusActivePrimaryShards :: Int,
-    healthStatusActiveShards :: Int,
-    healthStatusRelocatingShards :: Int,
-    healthStatusInitializingShards :: Int,
-    healthStatusUnassignedShards :: Int,
-    healthStatusDelayedUnassignedShards :: Int,
-    healthStatusNumberOfPendingTasks :: Int,
-    healthStatusNumberOfInFlightFetch :: Int,
+  { healthStatusClusterName                 :: Text,
+    healthStatusStatus                      :: Text,
+    healthStatusTimedOut                    :: Bool,
+    healthStatusNumberOfNodes               :: Int,
+    healthStatusNumberOfDataNodes           :: Int,
+    healthStatusActivePrimaryShards         :: Int,
+    healthStatusActiveShards                :: Int,
+    healthStatusRelocatingShards            :: Int,
+    healthStatusInitializingShards          :: Int,
+    healthStatusUnassignedShards            :: Int,
+    healthStatusDelayedUnassignedShards     :: Int,
+    healthStatusNumberOfPendingTasks        :: Int,
+    healthStatusNumberOfInFlightFetch       :: Int,
     healthStatusTaskMaxWaitingInQueueMillis :: Int,
     healthStatusActiveShardsPercentAsNumber :: Float
   }
@@ -691,7 +693,7 @@ openOrCloseIndexes oci (IndexName indexName) =
   post [indexName, stringifyOCIndex] emptyBody
   where
     stringifyOCIndex = case oci of
-      OpenIndex -> "_open"
+      OpenIndex  -> "_open"
       CloseIndex -> "_close"
 
 -- | 'openIndex' opens an index given a 'Server' and an 'IndexName'. Explained in further detail at
@@ -817,10 +819,10 @@ putMapping (IndexName indexName) mapping =
 versionCtlParams :: IndexDocumentSettings -> [(Text, Maybe Text)]
 versionCtlParams cfg =
   case idsVersionControl cfg of
-    NoVersionControl -> []
-    InternalVersion v -> versionParams v "internal"
-    ExternalGT (ExternalDocVersion v) -> versionParams v "external_gt"
-    ExternalGTE (ExternalDocVersion v) -> versionParams v "external_gte"
+    NoVersionControl                    -> []
+    InternalVersion v                   -> versionParams v "internal"
+    ExternalGT (ExternalDocVersion v)   -> versionParams v "external_gt"
+    ExternalGTE (ExternalDocVersion v)  -> versionParams v "external_gte"
     ForceVersion (ExternalDocVersion v) -> versionParams v "force"
   where
     vt = showText . docVersionNumber
@@ -855,13 +857,13 @@ indexDocument (IndexName indexName) cfg document (DocId docId) =
     body = encodeDocument cfg document
 
 data IndexedDocument = IndexedDocument
-  { idxDocIndex :: Text,
-    idxDocType :: Text,
-    idxDocId :: Text,
-    idxDocVersion :: Int,
-    idxDocResult :: Text,
-    idxDocShards :: ShardResult,
-    idxDocSeqNo :: Int,
+  { idxDocIndex       :: Text,
+    idxDocType        :: Text,
+    idxDocId          :: Text,
+    idxDocVersion     :: Int,
+    idxDocResult      :: Text,
+    idxDocShards      :: ShardResult,
+    idxDocSeqNo       :: Int,
     idxDocPrimaryTerm :: Int
   }
   deriving stock (Eq, Show)
@@ -912,8 +914,8 @@ indexQueryString cfg (DocId docId) =
   versionCtlParams cfg <> routeParams
   where
     routeParams = case idsJoinRelation cfg of
-      Nothing -> []
-      Just (ParentDocument _ _) -> [("routing", Just docId)]
+      Nothing                              -> []
+      Just (ParentDocument _ _)            -> [("routing", Just docId)]
       Just (ChildDocument _ _ (DocId pid)) -> [("routing", Just pid)]
 
 encodeDocument :: ToJSON doc => IndexDocumentSettings -> doc -> Value
@@ -945,18 +947,18 @@ deleteByQuery (IndexName indexName) query =
     body = object ["query" .= query]
 
 data DeletedDocuments = DeletedDocuments
-  { delDocsTook :: Int,
-    delDocsTimedOut :: Bool,
-    delDocsTotal :: Int,
-    delDocsDeleted :: Int,
-    delDocsBatches :: Int,
-    delDocsVersionConflicts :: Int,
-    delDocsNoops :: Int,
-    delDocsRetries :: DeletedDocumentsRetries,
-    delDocsThrottledMillis :: Int,
-    delDocsRequestsPerSecond :: Float,
+  { delDocsTook                 :: Int,
+    delDocsTimedOut             :: Bool,
+    delDocsTotal                :: Int,
+    delDocsDeleted              :: Int,
+    delDocsBatches              :: Int,
+    delDocsVersionConflicts     :: Int,
+    delDocsNoops                :: Int,
+    delDocsRetries              :: DeletedDocumentsRetries,
+    delDocsThrottledMillis      :: Int,
+    delDocsRequestsPerSecond    :: Float,
     delDocsThrottledUntilMillis :: Int,
-    delDocsFailures :: [Value] -- TODO find examples
+    delDocsFailures             :: [Value] -- TODO find examples
   }
   deriving stock (Eq, Show)
 
@@ -978,7 +980,7 @@ instance FromJSON DeletedDocuments where
         <*> v .: "failures"
 
 data DeletedDocumentsRetries = DeletedDocumentsRetries
-  { delDocsRetriesBulk :: Int,
+  { delDocsRetriesBulk   :: Int,
     delDocsRetriesSearch :: Int
   }
   deriving stock (Eq, Show)
@@ -1096,7 +1098,7 @@ encodeBulkOperation
       doc = case payload of
         UpsertDoc value -> object ["doc" .= value, "doc_as_upsert" .= True]
         UpsertScript scriptedUpsert script value ->
-          let scup = if scriptedUpsert then ["scripted_upsert" .= True] else []
+          let scup = ["scripted_upsert" .= True | scriptedUpsert]
               upsert = ["upsert" .= value]
            in case (object (scup <> upsert), toJSON script) of
                 (Object obj, Object jscript) -> Object $ jscript <> obj
@@ -1248,7 +1250,7 @@ scroll' (Just sid) = do
   res <- advanceScroll sid 60
   case res of
     Right SearchResult {..} -> return (hits searchHits, scrollId)
-    Left _ -> return ([], Nothing)
+    Left _                  -> return ([], Nothing)
 
 -- | Use the given scroll to fetch the next page of documents. If there are no
 -- further pages, 'SearchResult.searchHits.hits' will be '[]'.
@@ -1303,7 +1305,7 @@ scanSearch indexName search = do
   initialSearchResult <- getInitialScroll indexName search
   let (hits', josh) = case initialSearchResult of
         Right SearchResult {..} -> (hits searchHits, scrollId)
-        Left _ -> ([], Nothing)
+        Left _                  -> ([], Nothing)
   (totalHits, _) <- scanAccumulator [] (hits', josh)
   return totalHits
 
@@ -1481,7 +1483,7 @@ basicAuthHook (EsUsername u) (EsPassword p) = return . applyBasicAuth u' p'
     p' = T.encodeUtf8 p
 
 boolQP :: Bool -> Text
-boolQP True = "true"
+boolQP True  = "true"
 boolQP False = "false"
 
 countByIndex :: (MonadBH m, MonadThrow m) => IndexName -> CountQuery -> m (ParsedEsResponse CountResponse)

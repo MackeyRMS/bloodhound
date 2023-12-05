@@ -1,12 +1,12 @@
-{-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE DeriveGeneric              #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
-{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE OverloadedStrings          #-}
 
 module Database.Bloodhound.Internal.Newtypes where
 
-import Bloodhound.Import
-import qualified Data.Map.Strict as M
-import GHC.Generics
+import           Bloodhound.Import
+import qualified Data.Map.Strict   as M
+import           GHC.Generics
 
 newtype From = From Int deriving (Eq, Show, ToJSON)
 
@@ -15,7 +15,10 @@ newtype Size = Size Int deriving (Eq, Show, Generic, ToJSON, FromJSON)
 -- Used with scripts
 newtype HitFields
   = HitFields (M.Map Text [Value])
-  deriving (Eq, Show)
+  deriving (Eq, Show, Generic)
+
+instance ToJSON HitFields where
+  toJSON = genericToJSON defaultOptions
 
 instance FromJSON HitFields where
   parseJSON x =
@@ -252,7 +255,7 @@ newtype MaybeNA a = MaybeNA {unMaybeNA :: Maybe a}
 
 instance FromJSON a => FromJSON (MaybeNA a) where
   parseJSON (String "NA") = pure $ MaybeNA Nothing
-  parseJSON o = MaybeNA . Just <$> parseJSON o
+  parseJSON o             = MaybeNA . Just <$> parseJSON o
 
 newtype SnapshotName = SnapshotName {snapshotName :: Text}
   deriving (Eq, Show, ToJSON, FromJSON)

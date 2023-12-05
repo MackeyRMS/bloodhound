@@ -1,5 +1,6 @@
 {-# LANGUAGE DeriveGeneric              #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE NamedFieldPuns             #-}
 {-# LANGUAGE OverloadedStrings          #-}
 {-# LANGUAGE RecordWildCards            #-}
 
@@ -50,6 +51,7 @@ data Query
   | QueryExistsQuery FieldName
   | QueryMatchNoneQuery
   | QueryWildcardQuery WildcardQuery
+  | QueryKnnQuery KnnQuery
   deriving (Eq, Show, Generic)
 
 instance ToJSON Query where
@@ -134,6 +136,8 @@ instance ToJSON Query where
     object ["match_none" .= object []]
   toJSON (QueryWildcardQuery query) =
     object ["wildcard" .= query]
+  toJSON (QueryKnnQuery query) =
+    object ["knn" .= query]
 
 instance FromJSON Query where
   parseJSON v = withObject "Query" parse v
@@ -307,6 +311,26 @@ instance FromJSON WildcardQuery where
         WildcardQuery fn
           <$> o .: "value"
           <*> o .:? "boost"
+
+data KnnQuery = KnnQuery
+  { knnQueryK         :: Int
+  , knnQueryFieldName :: FieldName
+  , knnQueryVector    :: [Double]
+  , knnQueryFilter    :: Maybe Filter
+  }
+  deriving (Eq, Show, Generic)
+
+instance ToJSON KnnQuery where
+  toJSON KnnQuery{knnQueryK, knnQueryFieldName, knnQueryVector, knnQueryFilter} =
+    object
+      [ fromText fn .= omitNulls
+        [ "k" .= knnQueryK
+        , "filter" .= knnQueryFilter
+        , "vector" .= knnQueryVector
+        ]
+      ]
+    where
+      FieldName fn = knnQueryFieldName
 
 data RangeQuery = RangeQuery
   { rangeQueryField :: FieldName,
@@ -2416,6 +2440,9 @@ data SuggestOptions = SuggestOptions
   }
   deriving (Eq, Read, Show, Generic)
 
+instance ToJSON SuggestOptions where
+  toJSON = genericToJSON defaultOptions
+
 instance FromJSON SuggestOptions where
   parseJSON = withObject "SuggestOptions" parse
     where
@@ -2432,7 +2459,10 @@ data SuggestResponse = SuggestResponse
     suggestResponseLength  :: Int,
     suggestResponseOptions :: [SuggestOptions]
   }
-  deriving (Eq, Read, Show)
+  deriving (Eq, Read, Show, Generic)
+
+instance ToJSON SuggestResponse where
+  toJSON = genericToJSON defaultOptions
 
 instance FromJSON SuggestResponse where
   parseJSON = withObject "SuggestResponse" parse
@@ -2448,7 +2478,10 @@ data NamedSuggestionResponse = NamedSuggestionResponse
   { nsrName      :: Text,
     nsrResponses :: [SuggestResponse]
   }
-  deriving (Eq, Read, Show)
+  deriving (Eq, Read, Show, Generic)
+
+instance ToJSON NamedSuggestionResponse where
+  toJSON = genericToJSON defaultOptions
 
 instance FromJSON NamedSuggestionResponse where
   parseJSON (Object o) = do

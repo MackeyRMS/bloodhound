@@ -1,20 +1,20 @@
-{-# LANGUAGE GeneralizedNewtypeDeriving #-}
-{-# LANGUAGE NamedFieldPuns             #-}
-{-# LANGUAGE OverloadedStrings          #-}
-{-# LANGUAGE RecordWildCards            #-}
+{-# LANGUAGE DeriveGeneric     #-}
+{-# LANGUAGE NamedFieldPuns    #-}
+{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE RecordWildCards   #-}
 
 module Database.Bloodhound.Internal.Aggregation where
 
 import           Bloodhound.Import
-import qualified Data.Aeson                             as Aeson
-import qualified Data.Aeson.KeyMap                      as X
-import qualified Data.Map.Strict                        as M
-import qualified Data.Text                              as T
+import qualified Data.Aeson                            as Aeson
+import qualified Data.Aeson.KeyMap                     as X
+import qualified Data.Map.Strict                       as M
+import qualified Data.Text                             as T
 import           Database.Bloodhound.Internal.Client
-import           Database.Bloodhound.Internal.Highlight (HitHighlight)
 import           Database.Bloodhound.Internal.Newtypes
 import           Database.Bloodhound.Internal.Query
 import           Database.Bloodhound.Internal.Sort
+import           GHC.Generics
 
 type Aggregations = M.Map Key Aggregation
 
@@ -291,7 +291,7 @@ class BucketAggregation a where
   docCount :: a -> Int
   aggs :: a -> Maybe AggregationResults
 
-data Bucket a = Bucket
+newtype Bucket a = Bucket
   { buckets :: [a]
   }
   deriving (Read, Show)
@@ -364,7 +364,7 @@ instance ToJSON DateMathExpr where
   toJSON (DateMathExpr a mods) = String (fmtA a <> mconcat (fmtMod <$> mods))
     where
       fmtA DMNow         = "now"
-      fmtA (DMDate date) = (T.pack $ showGregorian date) <> "||"
+      fmtA (DMDate date) = T.pack (showGregorian date) <> "||"
       fmtMod (AddTime n u)      = "+" <> showText n <> fmtU u
       fmtMod (SubtractTime n u) = "-" <> showText n <> fmtU u
       fmtMod (RoundDownTo u)    = "/" <> fmtU u
@@ -410,7 +410,7 @@ instance FromJSON TermsResult where
     TermsResult
       <$> v .: "key"
       <*> v .: "doc_count"
-      <*> (pure $ getNamedSubAgg v ["key", "doc_count"])
+      <*> pure (getNamedSubAgg v ["key", "doc_count"])
   parseJSON _ = mempty
 
 instance BucketAggregation TermsResult where
@@ -432,14 +432,12 @@ instance FromJSON DateHistogramResult where
       <$> v .: "key"
       <*> v .:? "key_as_string"
       <*> v .: "doc_count"
-      <*> ( pure $
-              getNamedSubAgg
+      <*> pure (getNamedSubAgg
                 v
                 [ "key",
                   "doc_count",
                   "key_as_string"
-                ]
-          )
+                ])
   parseJSON _ = mempty
 
 instance BucketAggregation DateHistogramResult where
@@ -469,8 +467,7 @@ instance FromJSON DateRangeResult where
           <*> (fmap posixMS <$> v .:? "to")
           <*> v .:? "to_as_string"
           <*> v .: "doc_count"
-          <*> ( pure $
-                  getNamedSubAgg
+          <*> pure (getNamedSubAgg
                     v
                     [ "key",
                       "from",
@@ -478,8 +475,7 @@ instance FromJSON DateRangeResult where
                       "to",
                       "to_as_string",
                       "doc_count"
-                    ]
-              )
+                    ])
 
 instance BucketAggregation DateRangeResult where
   key = TextValue . dateRangeKey
@@ -513,7 +509,7 @@ getNamedSubAgg o knownKeys = maggRes
       | X.null unknownKeys = Nothing
       | otherwise = Just . M.fromList $ X.toList unknownKeys
 
-data MissingResult = MissingResult
+newtype MissingResult = MissingResult
   { missingDocCount :: Int
   }
   deriving (Show)
@@ -523,10 +519,13 @@ instance FromJSON MissingResult where
     where
       parse v = MissingResult <$> v .: "doc_count"
 
-data TopHitResult a = TopHitResult
-  { tarHits :: (SearchHits a)
+newtype TopHitResult a = TopHitResult
+  { tarHits :: SearchHits a
   }
-  deriving (Eq, Show)
+  deriving (Eq, Show, Generic)
+
+instance ToJSON a => ToJSON (TopHitResult a) where
+  toJSON = genericToJSON defaultOptions
 
 instance (FromJSON a) => FromJSON (TopHitResult a) where
   parseJSON (Object v) =
@@ -534,7 +533,9 @@ instance (FromJSON a) => FromJSON (TopHitResult a) where
       <$> v .: "hits"
   parseJSON _ = fail "Failure in FromJSON (TopHitResult a)"
 
-data HitsTotalRelation = HTR_EQ | HTR_GTE deriving (Eq, Show)
+data HitsTotalRelation = HTR_EQ | HTR_GTE deriving (Eq, Show, Generic)
+instance ToJSON HitsTotalRelation where
+  toJSON = genericToJSON defaultOptions
 
 instance FromJSON HitsTotalRelation where
   parseJSON (String "eq")  = pure HTR_EQ
@@ -545,7 +546,10 @@ data HitsTotal = HitsTotal
   { value    :: Int,
     relation :: HitsTotalRelation
   }
-  deriving (Eq, Show)
+  deriving (Eq, Show, Generic)
+
+instance ToJSON HitsTotal where
+  toJSON = genericToJSON defaultOptions
 
 instance FromJSON HitsTotal where
   parseJSON (Object v) =
@@ -564,7 +568,10 @@ data SearchHits a = SearchHits
     maxScore  :: Score,
     hits      :: [Hit a]
   }
-  deriving (Eq, Show)
+  deriving (Eq, Show, Generic)
+
+instance ToJSON a => ToJSON (SearchHits a) where
+  toJSON = genericToJSON defaultOptions
 
 instance (FromJSON a) => FromJSON (SearchHits a) where
   parseJSON (Object v) =
@@ -594,7 +601,11 @@ data Hit a = Hit
     hitHighlight :: Maybe HitHighlight,
     hitInnerHits :: Maybe (X.KeyMap (TopHitResult Value))
   }
-  deriving (Eq, Show)
+  deriving (Eq, Show, Generic)
+
+
+instance ToJSON a => ToJSON (Hit a) where
+  toJSON = genericToJSON defaultOptions
 
 instance (FromJSON a) => FromJSON (Hit a) where
   parseJSON (Object v) =

@@ -1493,7 +1493,10 @@ data ShardResult = ShardResult
     shardsSkipped    :: Int,
     shardsFailed     :: Int
   }
-  deriving (Eq, Show)
+  deriving (Eq, Show, Generic)
+
+instance ToJSON ShardResult where
+  toJSON = genericToJSON defaultOptions
 
 instance FromJSON ShardResult where
   parseJSON =
