@@ -2,6 +2,7 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE LambdaCase                 #-}
 {-# LANGUAGE OverloadedStrings          #-}
+{-# LANGUAGE RecordWildCards #-}
 
 module Database.Bloodhound.Internal.Analysis where
 
@@ -11,6 +12,7 @@ import qualified Data.Text                                  as T
 import           Database.Bloodhound.Internal.Newtypes
 import           Database.Bloodhound.Internal.StringlyTyped
 import           GHC.Generics
+import qualified Data.Aeson.KeyMap as K
 
 data Analysis = Analysis
   { analysisAnalyzer    :: M.Map Text AnalyzerDefinition,
@@ -214,10 +216,24 @@ data TokenFilterDefinition
   | TokenFilterDefinitionEdgeNgram NgramFilter (Maybe EdgeNgramFilterSide)
   | TokenFilterDefinitionNgram NgramFilter
   | TokenFilterTruncate Int
+  | TokenFilterCustom CustomTokenFilterDefinition
   deriving (Eq, Show, Generic)
+
+data CustomTokenFilterDefinition
+  =  CustomTokenFilterDefinition
+   { filterType :: Text
+   , properties :: K.KeyMap Value
+   }
+   deriving (Eq, Show, Generic)
+
 
 instance ToJSON TokenFilterDefinition where
   toJSON x = case x of
+    TokenFilterCustom CustomTokenFilterDefinition{..} ->
+      object $ mconcat
+        [ ["type" .= filterType]
+        , [f .= v | (f,v) <- K.toList properties ]
+        ]
     TokenFilterDefinitionLowercase mlang ->
       object $
         catMaybes

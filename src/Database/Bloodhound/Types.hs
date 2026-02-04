@@ -223,6 +223,7 @@ module Database.Bloodhound.Types
     Analyzer (..),
     Tokenizer (..),
     TokenFilter (..),
+    CustomTokenFilterDefinition(..),
     CharFilter (..),
     MaxExpansions (..),
     Lenient (..),
