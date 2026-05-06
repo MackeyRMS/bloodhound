@@ -608,6 +608,8 @@ instance Arbitrary PostingsHighlight where arbitrary = genericArbitraryU
 
 instance Arbitrary FastVectorHighlight where arbitrary = genericArbitraryU
 
+instance Arbitrary UnifiedHighlight where arbitrary = genericArbitraryU
+
 instance Arbitrary CommonHighlight where arbitrary = genericArbitraryU
 
 instance Arbitrary HighlightTag where arbitrary = genericArbitraryU

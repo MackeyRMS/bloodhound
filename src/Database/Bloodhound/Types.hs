@@ -403,6 +403,7 @@ module Database.Bloodhound.Types
     PlainHighlight (..),
     PostingsHighlight (..),
     FastVectorHighlight (..),
+    UnifiedHighlight (..),
     CommonHighlight (..),
     NonPostings (..),
     HighlightEncoder (..),

@@ -2122,6 +2122,7 @@ data HighlightSettings
   = Plain PlainHighlight
   | Postings PostingsHighlight
   | FastVector FastVectorHighlight
+  | Unified UnifiedHighlight
   deriving (Eq, Show, Generic)
 
 instance ToJSON HighlightSettings where
@@ -2147,6 +2148,14 @@ data FastVectorHighlight = FastVectorHighlight
     fragmentOffset    :: Maybe Int,
     matchedFields     :: [Text],
     phraseLimit       :: Maybe Int
+  }
+  deriving (Eq, Show, Generic)
+
+-- The unified highlighter (default in modern ES/OpenSearch) handles
+-- mixed field types more gracefully than the plain highlighter.
+data UnifiedHighlight = UnifiedHighlight
+  { unifiedCommon  :: Maybe CommonHighlight,
+    unifiedNonPost :: Maybe NonPostings
   }
   deriving (Eq, Show, Generic)
 
@@ -2189,6 +2198,7 @@ highlightSettingsPairs Nothing                 = []
 highlightSettingsPairs (Just (Plain plh))      = plainHighPairs (Just plh)
 highlightSettingsPairs (Just (Postings ph))    = postHighPairs (Just ph)
 highlightSettingsPairs (Just (FastVector fvh)) = fastVectorHighPairs (Just fvh)
+highlightSettingsPairs (Just (Unified uh))     = unifiedHighPairs (Just uh)
 
 plainHighPairs :: Maybe PlainHighlight -> [Pair]
 plainHighPairs Nothing = []
@@ -2196,6 +2206,13 @@ plainHighPairs (Just (PlainHighlight plCom plNonPost)) =
   ["type" .= String "plain"]
     ++ commonHighlightPairs plCom
     ++ nonPostingsToPairs plNonPost
+
+unifiedHighPairs :: Maybe UnifiedHighlight -> [Pair]
+unifiedHighPairs Nothing = []
+unifiedHighPairs (Just (UnifiedHighlight uCom uNonPost)) =
+  ["type" .= String "unified"]
+    ++ commonHighlightPairs uCom
+    ++ nonPostingsToPairs uNonPost
 
 postHighPairs :: Maybe PostingsHighlight -> [Pair]
 postHighPairs Nothing = []
