@@ -260,17 +260,34 @@ instance (FromJSON a) => FromJSON (EsResultFound a) where
 -- | 'EsError' is the generic type that will be returned when there was a
 --    problem. If you can't parse the expected response, its a good idea to
 --    try parsing this.
+--
+--    'errorDetails' carries the full @error@ object from the response when
+--    it is structured (e.g. @root_cause@, @failed_shards@, @caused_by@),
+--    so callers aren't left with just @"all shards failed"@.
 data EsError = EsError
   { errorStatus :: Int,
-    errorMessage :: Text
+    errorMessage :: Text,
+    errorDetails :: Maybe Value
   }
-  deriving (Eq, Show)
+  deriving (Eq)
+
+instance Show EsError where
+  show (EsError status message details) =
+    "EsError {errorStatus = "
+      <> show status
+      <> ", errorMessage = "
+      <> show message
+      <> maybe "" (\d -> ", errorDetails = " <> T.unpack (T.decodeUtf8 (BL.toStrict (encode d)))) details
+      <> "}"
 
 instance FromJSON EsError where
-  parseJSON (Object v) =
-    EsError
-      <$> v .: "status"
-      <*> (v .: "error" <|> (v .: "error" >>= (.: "reason")))
+  parseJSON (Object v) = do
+    status <- v .: "status"
+    err <- v .: "error"
+    case err of
+      String msg -> pure $ EsError status msg Nothing
+      Object o -> EsError status <$> o .: "reason" <*> pure (Just err)
+      _ -> empty
   parseJSON _ = empty
 
 -- | 'EsProtocolException' will be thrown if Bloodhound cannot parse a response
