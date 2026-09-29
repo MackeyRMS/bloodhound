@@ -404,6 +404,7 @@ module Database.Bloodhound.Types
     PostingsHighlight (..),
     FastVectorHighlight (..),
     UnifiedHighlight (..),
+    BoundaryScanner (..),
     CommonHighlight (..),
     NonPostings (..),
     HighlightEncoder (..),

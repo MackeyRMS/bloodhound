@@ -2154,10 +2154,24 @@ data FastVectorHighlight = FastVectorHighlight
 -- The unified highlighter (default in modern ES/OpenSearch) handles
 -- mixed field types more gracefully than the plain highlighter.
 data UnifiedHighlight = UnifiedHighlight
-  { unifiedCommon  :: Maybe CommonHighlight,
-    unifiedNonPost :: Maybe NonPostings
+  { unifiedCommon          :: Maybe CommonHighlight,
+    unifiedNonPost         :: Maybe NonPostings,
+    unifiedBoundaryScanner :: Maybe BoundaryScanner
   }
   deriving (Eq, Show, Generic)
+
+-- How the unified highlighter cuts fragments. 'BoundaryWord' yields one
+-- fragment per matched term, which the plain highlighter only approximates
+-- with @fragment_size: 0@. @chars@ is deliberately absent: the unified
+-- highlighter rejects it (fvh-only).
+data BoundaryScanner
+  = BoundarySentence
+  | BoundaryWord
+  deriving (Eq, Show, Generic)
+
+instance ToJSON BoundaryScanner where
+  toJSON BoundarySentence = String "sentence"
+  toJSON BoundaryWord     = String "word"
 
 data CommonHighlight = CommonHighlight
   { order             :: Maybe Text,
@@ -2209,8 +2223,10 @@ plainHighPairs (Just (PlainHighlight plCom plNonPost)) =
 
 unifiedHighPairs :: Maybe UnifiedHighlight -> [Pair]
 unifiedHighPairs Nothing = []
-unifiedHighPairs (Just (UnifiedHighlight uCom uNonPost)) =
-  ["type" .= String "unified"]
+unifiedHighPairs (Just (UnifiedHighlight uCom uNonPost uBoundaryScanner)) =
+  [ "type" .= String "unified",
+    "boundary_scanner" .= uBoundaryScanner
+  ]
     ++ commonHighlightPairs uCom
     ++ nonPostingsToPairs uNonPost
 
