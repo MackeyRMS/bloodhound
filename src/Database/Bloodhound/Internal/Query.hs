@@ -363,7 +363,8 @@ data SimpleQueryStringQuery = SimpleQueryStringQuery
     simpleQueryStringAnalyzer          :: Maybe Analyzer,
     simpleQueryStringFlags             :: Maybe (NonEmpty SimpleQueryFlag),
     simpleQueryStringLowercaseExpanded :: Maybe LowercaseExpanded,
-    simpleQueryStringLocale            :: Maybe Locale
+    simpleQueryStringLocale            :: Maybe Locale,
+    simpleQueryStringLenient           :: Maybe Lenient
   }
   deriving (Eq, Show, Generic)
 
@@ -376,9 +377,10 @@ instance ToJSON SimpleQueryStringQuery where
         [ "fields" .= simpleQueryStringField,
           "default_operator" .= simpleQueryStringOperator,
           "analyzer" .= simpleQueryStringAnalyzer,
-          "flags" .= simpleQueryStringFlags,
+          "flags" .= fmap (T.intercalate "|" . map simpleQueryFlagName . toList) simpleQueryStringFlags,
           "lowercase_expanded_terms" .= simpleQueryStringLowercaseExpanded,
-          "locale" .= simpleQueryStringLocale
+          "locale" .= simpleQueryStringLocale,
+          "lenient" .= simpleQueryStringLenient
         ]
 
 instance FromJSON SimpleQueryStringQuery where
@@ -390,11 +392,13 @@ instance FromJSON SimpleQueryStringQuery where
           <*> o .:? "fields"
           <*> o .:? "default_operator"
           <*> o .:? "analyzer"
-          <*> (parseFlags <$> o .:? "flags")
+          <*> (o .:? "flags" >>= maybe (pure Nothing) parseFlags)
           <*> o .:? "lowercase_expanded_terms"
           <*> o .:? "locale"
-      parseFlags (Just (x : xs)) = Just (x :| xs)
-      parseFlags _               = Nothing
+          <*> o .:? "lenient"
+      parseFlags t = case filter (not . T.null) (T.splitOn "|" t) of
+        []       -> pure Nothing
+        (x : xs) -> Just <$> traverse (parseJSON . String) (x :| xs)
 
 data SimpleQueryFlag
   = SimpleQueryAll
@@ -412,18 +416,21 @@ data SimpleQueryFlag
   deriving (Eq, Show, Generic)
 
 instance ToJSON SimpleQueryFlag where
-  toJSON SimpleQueryAll        = "ALL"
-  toJSON SimpleQueryNone       = "NONE"
-  toJSON SimpleQueryAnd        = "AND"
-  toJSON SimpleQueryOr         = "OR"
-  toJSON SimpleQueryPrefix     = "PREFIX"
-  toJSON SimpleQueryPhrase     = "PHRASE"
-  toJSON SimpleQueryPrecedence = "PRECEDENCE"
-  toJSON SimpleQueryEscape     = "ESCAPE"
-  toJSON SimpleQueryWhitespace = "WHITESPACE"
-  toJSON SimpleQueryFuzzy      = "FUZZY"
-  toJSON SimpleQueryNear       = "NEAR"
-  toJSON SimpleQuerySlop       = "SLOP"
+  toJSON = String . simpleQueryFlagName
+
+simpleQueryFlagName :: SimpleQueryFlag -> Text
+simpleQueryFlagName SimpleQueryAll        = "ALL"
+simpleQueryFlagName SimpleQueryNone       = "NONE"
+simpleQueryFlagName SimpleQueryAnd        = "AND"
+simpleQueryFlagName SimpleQueryOr         = "OR"
+simpleQueryFlagName SimpleQueryPrefix     = "PREFIX"
+simpleQueryFlagName SimpleQueryPhrase     = "PHRASE"
+simpleQueryFlagName SimpleQueryPrecedence = "PRECEDENCE"
+simpleQueryFlagName SimpleQueryEscape     = "ESCAPE"
+simpleQueryFlagName SimpleQueryWhitespace = "WHITESPACE"
+simpleQueryFlagName SimpleQueryFuzzy      = "FUZZY"
+simpleQueryFlagName SimpleQueryNear       = "NEAR"
+simpleQueryFlagName SimpleQuerySlop       = "SLOP"
 
 instance FromJSON SimpleQueryFlag where
   parseJSON = withText "SimpleQueryFlag" parse
